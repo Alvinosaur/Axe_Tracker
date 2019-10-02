@@ -7,6 +7,7 @@ import os
 import time
 
 # from rpi_camera_interface import get_rpi_cam
+import picamera
 from process_image import count_diff_SSIM
 
 DEFAULT_PATH = '.'
@@ -46,19 +47,23 @@ if __name__ == '__main__':
     similarity_threshold = args.similarity_threshold
     count_threshold = (args.diff_min_pix, args.diff_max_pix)
     # cam = get_rpi_cam(width, height)
-    cap = cv2.VideoCapture(0)
-    prev, new =  None, np.empty((width, height, 3), dtype=np.uint8)
+    camera = picamera.PiCamera()
+    camera.resolution = (1920,1088)
+    camera.framerate = 24
+    time.sleep(2)
+    # cap = cv2.VideoCapture(0)
+    prev_bgr, new_bgr =  None, np.empty((1088, 1920, 3), dtype=np.uint8)
 
     while (True):
         # 2 second delay between grabbing images
         time.sleep(sleep_dur)
 
         # grab image
-        # cam.capture(new, 'bgr')
-        _, new  = cap.read()
+        camera.capture(new_bgr, 'bgr')
+        # _, new  = cap.read()
 
-        if prev is not None:
-            diff = count_diff_SSIM(new, prev, width, height, 
+        if prev_bgr is not None:
+            diff = count_diff_SSIM(new_bgr, prev_bgr, width, height, 
                 similarity_threshold)
 
             if (count_threshold[0] <= diff and
@@ -67,7 +72,8 @@ if __name__ == '__main__':
                 # grab current time
                 curr_time = time.strftime("%Y-%m-%d_%H:%M:%S", time.gmtime())
                 img_name = os.path.join(output_folder, curr_time + '.png')
-                cv2.imwrite(img_name, new)
+                save_rgb = cv2.cvtColor(new_bgr, cv2.COLOR_BGR2RGB)
+                cv2.imwrite(img_name, save_rgb)
         
-        prev = new
+        prev_bgr = new_bgr
         
