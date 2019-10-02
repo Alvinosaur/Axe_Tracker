@@ -7,7 +7,7 @@ import matplotlib as mp
 mp.use('TkAgg')	# tkinter (for displaying images)
 from matplotlib import pyplot as plt
 
-verbose = True
+verbose = False
 
 def count_diff_SSIM(img1, img2, width, height, similarity_threshold):
     # crop image to only show target

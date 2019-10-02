@@ -50,9 +50,19 @@ if __name__ == '__main__':
     camera = picamera.PiCamera()
     camera.resolution = (1920,1088)
     camera.framerate = 24
-    time.sleep(2)
+    time.sleep(2) # sleep for 2 seconds to initialize camera hardware
+
+    # grab image, store in image in bgr format
+    print('Acquiring image...')
+    imageBGR = np.empty((1088,1920,3), dtype=np.uint8)
+    camera.capture(imageBGR, 'bgr')
+    curr_time = time.strftime("%Y-%m-%d_%H:%M:%S", time.gmtime())
+    img_name = os.path.join(output_folder, curr_time + '.png')
+    save_rgb = cv2.cvtColor(imageBGR, cv2.COLOR_BGR2RGB)
+    cv2.imwrite(img_name, save_rgb)
+    exit(0)
     # cap = cv2.VideoCapture(0)
-    prev_bgr, new_bgr =  None, np.empty((1088, 1920, 3), dtype=np.uint8)
+    # prev_bgr, new_bgr =  None, np.empty((1088, 1920, 3), dtype=np.uint8)
 
     while (True):
         # 2 second delay between grabbing images
