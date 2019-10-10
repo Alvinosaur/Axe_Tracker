@@ -16,6 +16,7 @@ DEFAULT_SIMILARITY_THRESH = 10
 DEFAULT_SLEEP = 1
 DEFAULT_MIN_PIX = 300
 DEFAULT_MAX_PIX = 400
+MIN_CAP_RATE = 60  # capture at least one image every minute
 verbose = True
 
 if __name__ == '__main__':
@@ -51,11 +52,13 @@ if __name__ == '__main__':
     camera.resolution = (1920,1088)
     camera.framerate = 24
     time.sleep(2) # sleep for 2 seconds to initialize camera hardware
+    prev_time, cur_time = time.time(), time.time()
 
     # cap = cv2.VideoCapture(0)
     prev_bgr, new_bgr =  None, np.empty((1088, 1920, 3), dtype=np.uint8)
 
     while (True):
+        cur_time = time.time()
         # 2 second delay between grabbing images
         time.sleep(sleep_dur)
 
@@ -67,14 +70,14 @@ if __name__ == '__main__':
             diff = count_diff_SSIM(new_bgr, prev_bgr, width, height, 
                 similarity_threshold)
 
-            if (count_threshold[0] <= diff and
-                diff <=  count_threshold[1]):
-
+            if (cur_time - prev_time > MIN_CAP_RATE) or (
+                    count_threshold[0] <= diff and diff <= count_threshold[1]):
                 # grab current time
                 curr_time = time.strftime("%Y-%m-%d_%H:%M:%S", time.gmtime())
                 img_name = os.path.join(output_folder, curr_time + '.png')
                 save_rgb = cv2.cvtColor(new_bgr, cv2.COLOR_BGR2RGB)
                 cv2.imwrite(img_name, save_rgb)
+                prev_time = cur_time
         
         prev_bgr = new_bgr
         
