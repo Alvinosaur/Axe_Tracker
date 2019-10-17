@@ -9,53 +9,40 @@ import time
 # from rpi_camera_interface import get_rpi_cam
 import picamera
 from process_image import count_diff_SSIM
+import yaml
 
-DEFAULT_PATH = '../images/'
-DEFAULT_WIDTH, DEFAULT_HEIGHT = 1920, 1088
-DEFAULT_SIMILARITY_THRESH = 10
-DEFAULT_SLEEP = 1
-DEFAULT_MIN_PIX = 300
-DEFAULT_MAX_PIX = 400
-MIN_CAP_RATE = 60  # capture at least one image every minute
 verbose = True
+YAML_FILEPATH = "default_params.yaml"
+CAM_FRAMERATE =  24
+file_format = "%Y-%m-%d_%H:%M:%S"
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path', dest='path', default=DEFAULT_PATH,
-                        help='output path of detected axe images')
-    parser.add_argument('--width', dest='width', default=DEFAULT_WIDTH, 
-                        type=int, help='width of image')        
-    parser.add_argument('--height', dest='height', default=DEFAULT_HEIGHT, 
-                        type=int, help='height of image')      
-    parser.add_argument('--sleep', dest='sleep', default=DEFAULT_SLEEP, 
-                        type=int, help='sleep duration btwn taking new image')  
-    parser.add_argument('--similarity_threshold', dest='similarity_threshold', 
-                        default=DEFAULT_SIMILARITY_THRESH, type=int,
-                        help='threshold for similarity measurement. The'+   
-                        'higher the threshold, the more sensitive to' + 'differences.')
-    parser.add_argument('--diff_min_pix', dest='diff_min_pix', 
-                        default=DEFAULT_MIN_PIX, type=int,
-                        help='MIN number of pixels diff btwn two images' + 
-                        'to be considered axe')
-    parser.add_argument('--diff_max_pix', dest='diff_max_pix', 
-                        default=DEFAULT_MAX_PIX, type=int,
-                        help='MAX number of pixels diff btwn two images' + 
-                        'to be considered axe')
+    parser.add_argument('--path', dest='path', default=YAML_FILEPATH,
+                        help='path to yaml file with params')
     args = parser.parse_args()
-    output_folder = args.path
-    width, height = args.width, args.height
-    sleep_dur = args.sleep
-    similarity_threshold = args.similarity_threshold
-    count_threshold = (args.diff_min_pix, args.diff_max_pix)
+    with open(args.path, 'r') as f:
+        params = yaml.load(f)
+    
+    output_folder = params["image_folder_path"]
+    width, height = params["image_width"], params["image_height"]
+    sleep_dur = params["sleep_dur"]
+    similarity_threshold = params["similarity_threshold"]
+    count_threshold = (params["min_diff_pix"], params["max_diff_pix"])
+    crop_bounds_w = (params["image_min_w"], params["image_max_w"])
+    crop_bounds_h = (params["image_min_h"], params["image_max_h"])
+    min_cap_rate = params["min_cap_rate"]
+    
     # cam = get_rpi_cam(width, height)
     camera = picamera.PiCamera()
-    camera.resolution = (1920,1088)
-    camera.framerate = 24
+    camera.resolution = (width, height)
+    camera.framerate = CAM_FRAMERATE
     time.sleep(2) # sleep for 2 seconds to initialize camera hardware
     prev_time, cur_time = time.time(), time.time()
 
     # cap = cv2.VideoCapture(0)
-    prev_bgr, new_bgr =  None, np.empty((1088, 1920, 3), dtype=np.uint8)
+    prev_bgr, new_bgr =  None, np.empty((height, width, 3), dtype=np.uint8)
 
     while (True):
         cur_time = time.time()
@@ -68,12 +55,12 @@ if __name__ == '__main__':
 
         if prev_bgr is not None:
             diff = count_diff_SSIM(new_bgr, prev_bgr, width, height, 
-                similarity_threshold)
+                crop_bounds_w, crop_bounds_h, similarity_threshold)
 
-            if (cur_time - prev_time > MIN_CAP_RATE) or (
+            if (cur_time - prev_time > min_cap_rate) or (
                     count_threshold[0] <= diff and diff <= count_threshold[1]):
                 # grab current time
-                curr_time = time.strftime("%Y-%m-%d_%H:%M:%S", time.gmtime())
+                curr_time = time.strftime(file_format, time.gmtime())
                 img_name = os.path.join(output_folder, curr_time + '.png')
                 save_rgb = cv2.cvtColor(new_bgr, cv2.COLOR_BGR2RGB)
                 cv2.imwrite(img_name, save_rgb)

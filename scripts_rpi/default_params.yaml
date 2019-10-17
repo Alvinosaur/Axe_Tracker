@@ -1,0 +1,19 @@
+# output path of detected axe images
+image_folder_path: "../images/"  
+image_width: 1920
+image_height: 1088
+# cropping bounds of image
+image_min_w: 600
+image_max_w: 1300
+image_min_h: 100
+image_max_h: 700
+# threshold for similarity measurement. The higher the threshold, the more 
+# sensitive to differences.
+similarity_threshold: 40
+sleep_dur: 1
+# MIN number of pixels diff btwn two images to be considered axe
+min_diff_pix: 300
+# MAX number of pixels diff
+max_diff_pix: 1300
+# capture at least one image every minute
+min_cap_rate: 60  

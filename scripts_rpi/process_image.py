@@ -9,11 +9,13 @@ from matplotlib import pyplot as plt
 
 verbose = False
 
-def count_diff_SSIM(img1, img2, width, height, similarity_threshold):
+def count_diff_SSIM(img1, img2, width, height, crop_bounds_w, crop_bounds_h, 
+        similarity_threshold):
     # crop image to only show target
-    inc_w, inc_h = width // 4,  height // 4
-    raw_img1 = img1[inc_w:3*inc_w, inc_h:3*inc_h]
-    raw_img2 = img2[inc_w:3*inc_w, inc_h:3*inc_h]
+    raw_img1 = img1[crop_bounds_h[0]:crop_bounds_h[1], 
+                    crop_bounds_w[0]:crop_bounds_w[1]]
+    raw_img2 = img2[crop_bounds_h[0]:crop_bounds_h[1], 
+                    crop_bounds_w[0]:crop_bounds_w[1]]
 
     # convert the images to grayscale
     gray_img1 = cv2.cvtColor(raw_img1, cv2.COLOR_BGR2GRAY)
@@ -26,7 +28,8 @@ def count_diff_SSIM(img1, img2, width, height, similarity_threshold):
 
     # threshold the difference image, followed by finding contours to
     # obtain the regions of the two input images that differ
-    thresh = cv2.threshold(diff_img, similarity_threshold, 1, cv2.THRESH_BINARY_INV)[1]
+    thresh = cv2.threshold(diff_img, similarity_threshold, 1, 
+        cv2.THRESH_BINARY_INV)[1]
     if verbose:
         fig = plt.figure()
         print(np.sum(thresh))
