@@ -24,7 +24,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     with open(args.path, 'r') as f:
         params = yaml.load(f)
-    
+
+    if verbose: print(params)    
     output_folder = params["image_folder_path"]
     width, height = params["image_width"], params["image_height"]
     sleep_dur = params["sleep_dur"]
@@ -56,13 +57,17 @@ if __name__ == '__main__':
         if prev_bgr is not None:
             diff = count_diff_SSIM(new_bgr, prev_bgr, width, height, 
                 crop_bounds_w, crop_bounds_h, similarity_threshold)
+            if verbose: print("new image pair diff: %d" % diff)
 
             if (cur_time - prev_time > min_cap_rate) or (
                     count_threshold[0] <= diff and diff <= count_threshold[1]):
                 # grab current time
                 curr_time = time.strftime(file_format, time.gmtime())
                 img_name = os.path.join(output_folder, curr_time + '.png')
-                save_rgb = cv2.cvtColor(new_bgr, cv2.COLOR_BGR2RGB)
+                save_rgb = cv2.cvtColor(new_bgr, cv2.COLOR_BGR2RGB)[
+                    crop_bounds_h[0]:crop_bounds_h[1], 
+                    crop_bounds_w[0]:crop_bounds_w[1]]
+ 
                 cv2.imwrite(img_name, save_rgb)
                 prev_time = cur_time
         
