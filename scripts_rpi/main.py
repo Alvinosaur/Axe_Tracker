@@ -59,8 +59,7 @@ if __name__ == '__main__':
                 crop_bounds_w, crop_bounds_h, similarity_threshold)
             if verbose: print("new image pair diff: %d" % diff)
 
-            if (cur_time - prev_time > min_cap_rate) or (
-                    count_threshold[0] <= diff and diff <= count_threshold[1]):
+            if count_threshold[0] <= diff:
                 # grab current time
                 curr_time = time.strftime(file_format, time.gmtime())
                 img_name = os.path.join(output_folder, curr_time + '.png')
