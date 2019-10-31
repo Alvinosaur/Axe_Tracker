@@ -70,5 +70,5 @@ if __name__ == '__main__':
                 cv2.imwrite(img_name, save_rgb)
                 prev_time = cur_time
         
-        prev_bgr = new_bgr
+        prev_bgr = np.copy(new_bgr)
         

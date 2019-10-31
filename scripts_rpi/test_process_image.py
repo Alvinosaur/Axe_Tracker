@@ -34,8 +34,11 @@ if __name__ == '__main__':
     width, height = params["image_width"], params["image_height"]
     similarity_threshold = params["similarity_threshold"]
     count_threshold = (params["min_diff_pix"], params["max_diff_pix"])
-    crop_bounds_w = (params["image_min_w"], params["image_max_w"])
-    crop_bounds_h = (params["image_min_h"], params["image_max_h"])
+    # crop_bounds_w = (params["image_min_w"], params["image_max_w"])
+    # crop_bounds_h = (params["image_min_h"], params["image_max_h"])
+    # already crop image when storing so don't crop again
+    crop_bounds_w = (0, width)
+    crop_bounds_h = (0, height)
 
     diff = count_diff_SSIM(img1_bgr, img2_bgr, width, height, 
         crop_bounds_w, crop_bounds_h, similarity_threshold)
