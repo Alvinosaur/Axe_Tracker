@@ -11,7 +11,7 @@ import picamera
 from process_image import count_diff_SSIM
 import yaml
 
-verbose = True
+verbose = False
 YAML_FILEPATH = "default_params.yaml"
 CAM_FRAMERATE =  24
 file_format = "%Y-%m-%d_%H:%M:%S"
