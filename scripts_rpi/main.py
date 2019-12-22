@@ -40,10 +40,11 @@ if __name__ == '__main__':
     camera.resolution = (width, height)
     camera.framerate = CAM_FRAMERATE
     time.sleep(2) # sleep for 2 seconds to initialize camera hardware
-    prev_time, cur_time = time.time(), time.time()
+    cur_time = time.time()
 
     # cap = cv2.VideoCapture(0)
     prev_bgr, new_bgr =  None, np.empty((height, width, 3), dtype=np.uint8)
+    saved_prev = False
 
     while (True):
         cur_time = time.time()
@@ -54,7 +55,8 @@ if __name__ == '__main__':
         camera.capture(new_bgr, 'bgr')
         # _, new  = cap.read()
 
-        if prev_bgr is not None:
+        # if saved previous image, don't try to compare to axeless image
+        if (prev_bgr is not None) and (not saved_prev):
             diff = count_diff_SSIM(new_bgr, prev_bgr, width, height, 
                 crop_bounds_w, crop_bounds_h, similarity_threshold)
             if verbose: print("new image pair diff: %d" % diff)
@@ -62,13 +64,22 @@ if __name__ == '__main__':
             if count_threshold[0] <= diff:
                 # grab current time
                 curr_time = time.strftime(file_format, time.gmtime())
-                img_name = os.path.join(output_folder, curr_time + '.png')
-                save_rgb = cv2.cvtColor(new_bgr, cv2.COLOR_BGR2RGB)[
+                img_name = os.path.join(output_folder, curr_time)
+                new_img_name = img_name + '_new' + '.png'
+                old_img_name = img_name + '_prev' + '.png'
+                new_rgb = cv2.cvtColor(new_bgr, cv2.COLOR_BGR2RGB)[
+                    crop_bounds_h[0]:crop_bounds_h[1], 
+                    crop_bounds_w[0]:crop_bounds_w[1]]
+                prev_rgb = cv2.cvtColor(prev_bgr, cv2.COLOR_BGR2RGB)[
                     crop_bounds_h[0]:crop_bounds_h[1], 
                     crop_bounds_w[0]:crop_bounds_w[1]]
  
-                cv2.imwrite(img_name, save_rgb)
-                prev_time = cur_time
-        
+                cv2.imwrite(new_img_name, new_rgb)
+                cv2.imwrite(old_img_name, prev_rgb)
+
+                saved_prev = True
+        else:
+            saved_prev = False
+
         prev_bgr = np.copy(new_bgr)
         
