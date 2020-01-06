@@ -9,7 +9,7 @@ image_min_h: 100
 image_max_h: 700
 # threshold for similarity measurement. The higher the threshold, the more 
 # sensitive to differences.
-similarity_threshold: 40
+similarity_threshold: 100
 sleep_dur: 1
 # MIN number of pixels diff btwn two images to be considered axe
 min_diff_pix: 300
