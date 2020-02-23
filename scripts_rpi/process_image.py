@@ -13,36 +13,31 @@ def split_rot_image(img, rect):
     # rotate img
     angle = rect[2]
     rows, cols = img.shape[0], img.shape[1]
-    M = cv2.getRotationMatrix2D((cols/2,rows/2),angle,1)
+    M = cv2.getRotationMatrix2D((cols//2,rows//2),angle,1)
     img_rot = cv2.warpAffine(img,M,(cols,rows))
 
-    # rotate bounding box
-    rect0 = (rect[0], rect[1], 0.0) 
-    box = cv2.boxPoints(rect0)
-    bcx, bcy = np.mean(box, axis=0, dtype=int)
-    [bcx, bcy] = np.int0(cv2.transform(np.array([bcx, bcy]), M))[0]
-    pts = np.int0(cv2.transform(np.array([box]), M))[0]
-    pts[pts < 0] = 0
-
-    # crop
-    img_crop = img_rot[pts[1][1]:pts[0][1], 
-                       pts[1][0]:pts[2][0]]
-
-    return img_crop
+    return img_rot
 
 def find_axe_tip(img):
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
     dilated = cv2.dilate(img, kernel, iterations=2)
     _, contours, _ = cv2.findContours(dilated.copy(), 
         cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    cnt = contours[0]
-    rect = cv2.minAreaRect(cnt)
+
+    main_cnt = max(contours, key = cv2.contourArea)
+    [x, y, w, h] = cv2.boundingRect(main_cnt)
+    cv2.rectangle(main_cnt, (x, y), (x + w, y + h), (255, 0, 255), 2)
+    rect = cv2.minAreaRect(main_cnt)
     box = cv2.boxPoints(rect)
     box = np.int0(box)
-    axe_cropped = split_rot_image(img, box)
 
-    # center of mass of detected axe
-    [vx,vy,cx,cy] = cv2.fitLine(contours, cv2.DIST_L2,0,0.01,0.01)
+    axe_cropped = split_rot_image(img[y:y+h, x:x+w], rect)
+    first_half, second_half = axe_cropped[:h//2, :], axe_cropped[h//2:h, :]  
+
+    if np.sum(first_half) > np.sum(second_half):
+        return (x+w, y+h//2), box
+    else:
+        return (x, y+h//2), box
 
 
 def count_diff_SSIM(img1, img2, width, height, crop_bounds_w, crop_bounds_h, 
@@ -64,38 +59,27 @@ def count_diff_SSIM(img1, img2, width, height, crop_bounds_w, crop_bounds_h,
 
     # threshold the difference image, followed by finding contours to
     # obtain the regions of the two input images that differ
-    thresh = cv2.threshold(diff_img, 50, 255,
+    thresh = cv2.threshold(diff_img, similarity_threshold, 255,
         cv2.THRESH_BINARY_INV)[1]
     thresh_color = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    dilated = cv2.dilate(thresh, kernel, iterations=2)
-    _, contours, _ = cv2.findContours(dilated.copy(), 
-        cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
 
-    main_cnt = max(contours, key = cv2.contourArea)
-    [x, y, w, h] = cv2.boundingRect(main_cnt)
-    cv2.rectangle(main_cnt, (x, y), (x + w, y + h), (255, 0, 255), 2)
-    print(x, y, w, h)
-    rect = cv2.minAreaRect(main_cnt)
-    box = cv2.boxPoints(rect)
-    box = np.int0(box)
-    # axe_cropped = split_rot_image(img, box)
+    axe_tip, box = find_axe_tip(thresh)
 
     # center of mass of detected axe
-    [vx,vy,cx,cy] = cv2.fitLine(main_cnt, cv2.DIST_L2,0,0.01,0.01)
+    # [vx,vy,cx,cy] = cv2.fitLine(main_cnt, cv2.DIST_L2,0,0.01,0.01)
     # find box length along axe
     # axe_tip = find_axe_tip(thresh)
 
     # # box center
-    bcx, bcy = np.mean(box, axis=0, dtype=int)
+    # bcx, bcy = np.mean(box, axis=0, dtype=int)
 
 
 
     cv2.drawContours(thresh_color,[box],0,(255,0,0),2)
-    cv2.drawContours(thresh,[box],0,(255,0,0),2)
-    cv2.circle(thresh_color, (cx, cy), 10, (0, 0, 255), thickness=3)
-    cv2.circle(thresh_color, (bcx, bcy), 10, (0, 255, 0), thickness=3)
+    # cv2.drawContours(thresh,[box],0,(255,0,0),2)
+    # cv2.circle(thresh_color, (cx, cy), 10, (0, 0, 255), thickness=3)
+    cv2.circle(thresh_color, axe_tip, 10, (0, 255, 0), thickness=3)
 
     # # 2nd principal axis
     # vx2, vy2 = -vy, -vx
