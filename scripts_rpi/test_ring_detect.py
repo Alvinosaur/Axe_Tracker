@@ -9,7 +9,8 @@ import yaml
 from matplotlib import pyplot as plt
 
 
-DEBUG = True
+DEBUG = False
+MASK_VAL = 255
 YAML_FILEPATH = "default_params.yaml"
 
 
@@ -20,19 +21,27 @@ def find_best_ring(img, R_bounds, G_bounds, B_bounds, hough_param1,
         hough_param2):
 
     R, G, B = cv2.split(img)
-    ret, maskR = cv2.threshold(R, R_bounds[0], R_bounds[1], cv2.THRESH_BINARY_INV)
-    ret, maskG = cv2.threshold(G, G_bounds[0], G_bounds[1], cv2.THRESH_BINARY_INV)
-    ret, maskB = cv2.threshold(B, B_bounds[0], B_bounds[1], cv2.THRESH_BINARY_INV)
+    ret, maskR_low = cv2.threshold(R, R_bounds[0], MASK_VAL, cv2.THRESH_BINARY)
+    ret, maskR_high = cv2.threshold(R, R_bounds[1], MASK_VAL, cv2.THRESH_BINARY_INV)
+    maskR = cv2.bitwise_and(maskR_low, maskR_high)
 
-    combined_mask = cv2.bitwise_or(maskR, maskG)
-    combined_mask = cv2.bitwise_or(combined_mask, maskB)
+    ret, maskG_low = cv2.threshold(G, G_bounds[0], MASK_VAL, cv2.THRESH_BINARY)
+    ret, maskG_high = cv2.threshold(G, G_bounds[1], MASK_VAL, cv2.THRESH_BINARY_INV)
+    maskG = cv2.bitwise_and(maskG_low, maskG_high)
+
+    ret, maskB_low = cv2.threshold(B, B_bounds[0], MASK_VAL, cv2.THRESH_BINARY)
+    ret, maskB_high = cv2.threshold(B, B_bounds[1], MASK_VAL, cv2.THRESH_BINARY_INV)
+    maskB = cv2.bitwise_and(maskB_low, maskB_high)
+
+    combined_mask = cv2.bitwise_and(maskR, maskG)
+    combined_mask = cv2.bitwise_and(combined_mask, maskB)
     
     if DEBUG:
         # use pyplot instead of cv2 imshow to see actual pixel values
         plt.imshow(combined_mask)
         plt.show()
     
-    circles = cv2.HoughCircles(combined_mask, cv2.HOUGH_GRADIENT, dp=1, 
+    circles = cv2.HoughCircles(combined_mask, cv2.HOUGH_GRADIENT, dp=1.2, 
         minDist=1, param1=hough_param1, param2=hough_param2)
         
     # ensure at least some circles were found
@@ -42,9 +51,10 @@ def find_best_ring(img, R_bounds, G_bounds, B_bounds, hough_param1,
 
         if DEBUG:
             x, y, r = circles[0]
-            cv2.circle(img, (x, y), r, (0, 255, 0), 4)
-            cv2.rectangle(img, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
-            cv2.imshow('img', img)
+            output = img.copy()
+            cv2.circle(output, (x, y), r, (0, 255, 0), 4)
+            cv2.rectangle(output, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
+            cv2.imshow('img', output)
             cv2.waitKey(0)
         return circles[0]
     
@@ -97,31 +107,31 @@ def main():
     B_bounds3 = (params["B_min3"], params["B_max3"])
 
     # Find rings
-    # inner_ring = find_best_ring(img1, R_bounds1, G_bounds1, B_bounds1, 
-    #     hough_p1, hough_p2)
+    inner_ring = find_best_ring(img1, R_bounds1, G_bounds1, B_bounds1, 
+        hough_p1, hough_p2)
     middle_ring = find_best_ring(img1, R_bounds2, G_bounds2, B_bounds2,
         hough_p1, hough_p2)
-    # outer_ring = find_best_ring(img1, R_bounds3, G_bounds3, B_bounds3,
-    #     hough_p1, hough_p2)
+    outer_ring = find_best_ring(img1, R_bounds3, G_bounds3, B_bounds3,
+        hough_p1, hough_p2)
 
-    # if (inner_ring is None) and (middle_ring is None) and (outer_ring is None):
-    #     raise(NoRingError("None of the 3 rings were found. Need to re-tune params!"))
+    outer_ring = None
+    middle_ring = None
 
-    # else:
-    #     print(inner_ring)
-    #     print(middle_ring)
-    #     print(outer_ring)
-    #     rings = fill_missing_rings(inner_ring, middle_ring, outer_ring)
-    #     draw_circles(img1, rings)
-    #     cv2.imshow("img1", img1)
-    #     cv2.waitKey(0)
-    #     return rings
+    if (inner_ring is None) and (middle_ring is None) and (outer_ring is None):
+        raise(NoRingError("None of the 3 rings were found. Need to re-tune params!"))
+
+    else:
+        rings = fill_missing_rings(inner_ring, middle_ring, outer_ring)
+        draw_circles(img1, rings)
+        cv2.imshow("img1", img1)
+        cv2.waitKey(0)
+        return rings
 
 
 def fill_missing_rings(ring1, ring2, ring3):
-    out_to_in = 30  # inner radius + 30 = outer radius
-    out_to_mid = 10
-    mid_to_in = 15
+    out_to_mid = 65
+    mid_to_in = 65
+    out_to_in = out_to_mid + mid_to_in
     if ring1 is None:
         if ring2 is None:
             ring1 = (ring3[0], ring3[1], ring3[2]-out_to_in)

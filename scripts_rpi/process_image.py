@@ -7,7 +7,7 @@ import matplotlib as mp
 mp.use('TkAgg')	# tkinter (for displaying images)
 from matplotlib import pyplot as plt
 
-verbose = True
+verbose = False
 
 def split_rot_image(img, rect):
     # rotate img
@@ -40,17 +40,10 @@ def find_axe_tip(img):
         return (x, y+h//2), box
 
 
-def count_diff_SSIM(img1, img2, width, height, crop_bounds_w, crop_bounds_h, 
-        similarity_threshold):
-    # crop image to only show target
-    raw_img1 = img1[crop_bounds_h[0]:crop_bounds_h[1], 
-                    crop_bounds_w[0]:crop_bounds_w[1]]
-    raw_img2 = img2[crop_bounds_h[0]:crop_bounds_h[1], 
-                    crop_bounds_w[0]:crop_bounds_w[1]]
-
+def count_diff_SSIM(img1, img2, similarity_threshold):
     # convert the images to grayscale
-    gray_img1 = cv2.cvtColor(raw_img1, cv2.COLOR_BGR2GRAY)
-    gray_img2 = cv2.cvtColor(raw_img2, cv2.COLOR_BGR2GRAY)
+    gray_img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+    gray_img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
     # compute Structural Similarity Index of the two images
     (score, diff_img) = ski.measure.compare_ssim(gray_img1, 
@@ -68,39 +61,16 @@ def count_diff_SSIM(img1, img2, width, height, crop_bounds_w, crop_bounds_h,
     cv2.drawContours(thresh_color,[box],0,(255,0,0),2)
     cv2.circle(thresh_color, axe_tip, 10, (0, 255, 0), thickness=3)
 
-    rings = find_rings()
-    score = calc_score()
-
     if verbose:
         fig = plt.figure()
-        cv2.imshow("New Image", raw_img1)
-        cv2.imshow("Prev Image", raw_img2)
+        cv2.imshow("New Image", img1)
+        cv2.imshow("Prev Image", img2)
         cv2.imshow("Differences", thresh_color)
         plt.imshow(thresh_color)
         plt.show()
-        cv2.waitKey(1)
+        cv2.waitKey(0)
 
     total = 0
     cx, cy = 0, 0
     rows, cols = thresh.shape
-    for r in range(rows):
-        for c in range(cols):
-            if thresh[r][c] == 1: 
-                cx += c
-                cy += r
-                total += 1
-    cx /= total
-    cy /= total
-    print(cx, cy)
-    return np.sum(thresh), thresh
-
-
-# def find_rings():
-
-
-
-# def calc_score():
-#     # for each ring, check if axe tip lies in ring (dist from origin <= radius with some error threshold)
-#     # start from tightest ring, work way outside, if find match, report this as best score
-
-#     return score
+    return np.sum(thresh), thresh, thresh_color
