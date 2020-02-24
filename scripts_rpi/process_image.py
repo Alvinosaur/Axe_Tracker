@@ -63,38 +63,13 @@ def count_diff_SSIM(img1, img2, width, height, crop_bounds_w, crop_bounds_h,
         cv2.THRESH_BINARY_INV)[1]
     thresh_color = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
 
-
     axe_tip, box = find_axe_tip(thresh)
 
-    # center of mass of detected axe
-    # [vx,vy,cx,cy] = cv2.fitLine(main_cnt, cv2.DIST_L2,0,0.01,0.01)
-    # find box length along axe
-    # axe_tip = find_axe_tip(thresh)
-
-    # # box center
-    # bcx, bcy = np.mean(box, axis=0, dtype=int)
-
-
-
     cv2.drawContours(thresh_color,[box],0,(255,0,0),2)
-    # cv2.drawContours(thresh,[box],0,(255,0,0),2)
-    # cv2.circle(thresh_color, (cx, cy), 10, (0, 0, 255), thickness=3)
     cv2.circle(thresh_color, axe_tip, 10, (0, 255, 0), thickness=3)
 
-    # # 2nd principal axis
-    # vx2, vy2 = -vy, -vx
-    
-    # # https://math.stackexchange.com/questions/274712/calculate-on-which-side-of-a-straight-line-is-a-given-point-located
-    # sign = (bcx-cx)*vy2 - (bcy-cy)*vx2  # (𝑥−𝑥1)(𝑦2−𝑦1)−(𝑦−𝑦1)(𝑥2−𝑥1)
-    # box_length = calc_box_length(box, vx, vy)
-    # print(box_length)
-    # if (sign >= 0):
-
-    # else:
-
-
-    # now just figure out which side is the head
-    axe_head = ()
+    rings = find_rings()
+    score = calc_score()
 
     if verbose:
         fig = plt.figure()
@@ -118,3 +93,14 @@ def count_diff_SSIM(img1, img2, width, height, crop_bounds_w, crop_bounds_h,
     cy /= total
     print(cx, cy)
     return np.sum(thresh), thresh
+
+
+# def find_rings():
+
+
+
+# def calc_score():
+#     # for each ring, check if axe tip lies in ring (dist from origin <= radius with some error threshold)
+#     # start from tightest ring, work way outside, if find match, report this as best score
+
+#     return score

@@ -17,3 +17,46 @@ min_diff_pix: 300
 max_diff_pix: 1300
 # capture at least one image every minute
 min_cap_rate: 60  
+
+# Hough Circle Transform params
+param1: 75
+param2: 40
+
+# Ring segmentation params for ring 1(inner ring)
+# R
+R_min1: 35.000
+R_max1: 52.000
+
+# G
+G_min1: 39.000
+G_max1: 88.000
+
+# B
+B_min1: 63.000
+B_max1: 98.000
+
+# Ring segmentation params for ring 2(middle ring)
+# R
+R_min2: 80.000
+R_max2: 92.000
+
+# G
+G_min2: 78.000
+G_max2: 86.000
+
+# B
+B_min2: 123.000
+B_max2: 207.000
+
+# Ring segmentation params for ring 3(outer ring)
+# R
+R_min3: 63.000
+R_max3: 192.000
+
+# G
+G_min3: 47.000
+G_max3: 77.000
+
+# B
+B_min3: 77.000
+B_max3: 98.000
