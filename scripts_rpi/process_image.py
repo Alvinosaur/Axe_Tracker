@@ -4,8 +4,8 @@ import imutils
 import cv2		# opencv library
 import numpy as np
 import matplotlib as mp
-mp.use('TkAgg')	# tkinter (for displaying images)
 from matplotlib import pyplot as plt
+# mp.use('TkAgg')	# tkinter (for displaying images)
 
 verbose = False
 

@@ -129,6 +129,8 @@ def main():
 
 
 def fill_missing_rings(ring1, ring2, ring3):
+    # returns original rings if all rings are present
+    # else approximates missing rings as long as one ring present
     out_to_mid = 65
     mid_to_in = 65
     out_to_in = out_to_mid + mid_to_in
@@ -162,5 +164,5 @@ def fill_missing_rings(ring1, ring2, ring3):
     return ring1, ring2, ring3
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
