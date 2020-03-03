@@ -49,6 +49,34 @@ def plot_confusion_matrix(mat, labels, title):
     plt.show()
 
 
+def plot_score_distib(diff_img_files):
+    scores = [0, 1, 3, 5]
+    counts = np.zeros(len(scores))
+    score_to_idx = {
+        0: 0,
+        1: 1,
+        3: 2,
+        5: 3
+    }
+    for img_file in diff_img_files:
+        true_score = get_labeled_score(img_file)
+        counts[score_to_idx[true_score]] += 1
+
+    total = len(diff_img_files)
+    counts = counts / total
+
+    x_ind = range(len(scores))
+    plt.xticks(x_ind, scores)
+    plt.yticks(counts)
+    plt.bar(x_ind, counts)
+    plt.xlabel('Scores')
+    plt.ylabel('Proportion of Total Dataset')
+    plt.title('Score Distribution in Dataset')
+    plt.show()
+
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', dest='path', default=YAML_FILEPATH,
@@ -90,6 +118,8 @@ if __name__ == '__main__':
 
     # already have difference images stored in differences folder
     diff_imgs = os.listdir(diff_img_dir)
+    # plot_score_distib(diff_imgs)
+    # exit()
     for img_file in diff_imgs:
         # both diff images and positives have same filename
         diff_img_path = os.path.join(diff_img_dir, img_file)
@@ -136,6 +166,14 @@ if __name__ == '__main__':
 
     print("confusion matrix:")
     print(confusion_matrix)
+
+    # metrics for evaluating results wrt distribution of scores
+    accuracy = np.sum(np.diag(confusion_matrix)) / len(diff_imgs)
+    recall = np.diag(
+        confusion_matrix / 
+        np.reshape(np.sum(confusion_matrix,1), (5,1)))
+    precision = np.diag(
+        confusion_matrix / np.sum(confusion_matrix))
 
     print("normalized confusion matrix:")
     totals = np.reshape(np.sum(confusion_matrix, axis=1), (len(labels),1))
