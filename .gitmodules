@@ -1,0 +1,6 @@
+[submodule "scripts_rpi/pytorch-mask-rcnn"]
+	path = scripts_rpi/pytorch-mask-rcnn
+	url = https://github.com/multimodallearning/pytorch-mask-rcnn.git
+[submodule "scripts_rpi/Mask_RCNN"]
+	path = scripts_rpi/Mask_RCNN
+	url = git@github.com:matterport/Mask_RCNN.git
