@@ -12,9 +12,12 @@ from ring_detect import fill_missing_rings, find_best_ring, draw_circles
 import yaml
 
 
-verbose = True
+DEBUG = False
+ONLY_USE_TEST = True
+if ONLY_USE_TEST: print("Only evaluating performance on test dataset!")
 YAML_FILEPATH = "default_params.yaml"
 positives_dir = "../../../axe_images/positives"
+test_dir = "../../../axe_images/test"
 diff_img_dir = "../../../axe_images/differences"
 
 
@@ -117,7 +120,10 @@ if __name__ == '__main__':
     missing_rings_imgs = []
 
     # already have difference images stored in differences folder
-    diff_imgs = os.listdir(diff_img_dir)
+    diff_imgs = set(os.listdir(diff_img_dir))
+    test_imgs = set(os.listdir(test_dir))
+    
+    if ONLY_USE_TEST: diff_imgs = diff_imgs.intersection(test_imgs)
     # plot_score_distib(diff_imgs)
     # exit()
     for img_file in diff_imgs:
@@ -151,10 +157,11 @@ if __name__ == '__main__':
         approx_score = generate_score(axe_tip, rings)
 
         ## debug drawing
-        cv2.circle(diff_img_color, axe_tip, 10, (0, 0, 255), thickness=3)
-        draw_circles(diff_img_color, rings)
-        cv2.imshow('output', np.hstack([orig_img, diff_img_color]))
-        cv2.waitKey(0)
+        if DEBUG:
+            cv2.circle(diff_img_color, axe_tip, 10, (0, 0, 255), thickness=3)
+            draw_circles(diff_img_color, rings)
+            cv2.imshow('output', np.hstack([orig_img, diff_img_color]))
+            cv2.waitKey(0)
 
     #     # update confusion matrix
         confusion_matrix[
@@ -171,9 +178,12 @@ if __name__ == '__main__':
     accuracy = np.sum(np.diag(confusion_matrix)) / len(diff_imgs)
     recall = np.diag(
         confusion_matrix / 
-        np.reshape(np.sum(confusion_matrix,1), (5,1)))
+        np.reshape(np.sum(confusion_matrix,1), (4,1)))
     precision = np.diag(
         confusion_matrix / np.sum(confusion_matrix))
+    print(accuracy)
+    print(recall)
+    print(precision)
 
     print("normalized confusion matrix:")
     totals = np.reshape(np.sum(confusion_matrix, axis=1), (len(labels),1))

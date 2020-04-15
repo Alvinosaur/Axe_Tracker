@@ -25,30 +25,31 @@ def main():
     label_shift_h, label_shift_w = top - 0, left - 0
     for img_name in img_names:
         if img_name == '.DS_Store': continue
-        still_valid = resize_img(img_name, top, bot, left, right)
-        # shift label positions
-        if still_valid:
-            offset_label(img_name[:-3] + 'xml', label_shift_h, label_shift_w)
+        et, in_bounds = offset_label(img_name[:-3] + 'xml', label_shift_h, 
+            label_shift_w)
+        
+        # if shifted label positions still within image bounds, add to positives
+        if in_bounds:
+            img = resize_img(img_name, top, bot, left, right)
+
+            # write new label
+            new_label_path = os.path.join(new_labels_dir, img_name[:-3] + 'xml')
+            et.write(new_label_path)
+
+            # write new image
+            new_img_path = os.path.join(new_positives_dir, img_name)
+            cv2.imwrite(new_img_path, img)
 
 
 def resize_img(file, top, bot, left, right):
     # crop to be 512 x 512, centered around target
     img = cv2.imread(filename=os.path.join(positives_dir, file))
     img = img[top:bot, left:right]
-    cv2.imshow('hi', img)
-    key = cv2.waitKey(0) & 0xFF
 
     # scale down to 128 x 128
     img = cv2.resize(img, dsize=(FINAL_SIZE, FINAL_SIZE))
     # if image still contains axe, then keep as new positive, else don't add
-    if key == ord('y'):
-        new_path = os.path.join(new_positives_dir, file)
-        # print(img.shape)
-        cv2.imwrite(new_path, img)
-        return True
-
-    else:
-        return False
+    return img
 
 
 def offset_label(file, shift_h, shift_w):
@@ -69,13 +70,21 @@ def offset_label(file, shift_h, shift_w):
     xmin, xmax = bbox.find('xmin'), bbox.find('xmax')
     ymin, ymax = bbox.find('ymin'), bbox.find('ymax')
 
-    xmin.text = str(int((int(xmin.text) - shift_w) * SCALE))
-    xmax.text = str(int((int(xmax.text) - shift_w) * SCALE))
-    ymin.text = str(int((int(ymin.text) - shift_h + dcy) * SCALE))
-    ymax.text = str(int((int(ymax.text) - shift_h + dcy) * SCALE))
+    xmin_val = max(0, int((int(xmin.text) - shift_w) * SCALE))
+    xmax_val = min(FINAL_SIZE, int((int(xmax.text) - shift_w) * SCALE))
+    ymin_val = max(0, int((int(ymin.text) - shift_h + dcy) * SCALE))
+    ymax_val = min(FINAL_SIZE, int((int(ymax.text) - shift_h + dcy) * SCALE))
 
-    new_path = os.path.join(new_labels_dir, file)
-    et.write(new_path)
+    xmin.text = str(xmin_val)
+    xmax.text = str(xmax_val)
+    ymin.text = str(ymin_val)
+    ymax.text = str(ymax_val)
 
+    in_bounds = (
+        (0 <= xmin_val <= FINAL_SIZE) and (0 <= xmax_val <= FINAL_SIZE) and
+        (0 <= ymin_val <= FINAL_SIZE) and (0 <= ymax_val <= FINAL_SIZE)
+    )
+
+    return et, in_bounds
 
 main()
