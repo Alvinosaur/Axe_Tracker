@@ -116,7 +116,7 @@ def main():
     middle_ring = find_best_ring(img1, R_bounds2, G_bounds2, B_bounds2,
         hough_p1, hough_p2, hough_dp)
     outer_ring = find_best_ring(img1, R_bounds3, G_bounds3, B_bounds3,
-        hough_p1, hough_p2, hough_dp)s
+        hough_p1, hough_p2, hough_dp)
 
     if (inner_ring is None) and (middle_ring is None) and (outer_ring is None):
         raise(NoRingError("None of the 3 rings were found. Need to re-tune params!"))
