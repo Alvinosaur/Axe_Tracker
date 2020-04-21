@@ -19,44 +19,49 @@ max_diff_pix: 1300
 min_cap_rate: 60  
 
 # Hough Circle Transform params
-param1: 75
-param2: 40
+# https://www.pyimagesearch.com/2014/07/21/detecting-circles-images-using-opencv-hough-circles/
+param1: 75  # doesn't really make any difference
+param2: 30
+hough_dp: 2
 
 # Ring segmentation params for ring 1(inner ring)
 # R
 R_min1: 20
-R_max1: 60
+R_max1: 46
 
 # G
-G_min1: 51
-G_max1: 79
+G_min1: 45
+G_max1: 73
 
 # B
-B_min1: 68
-B_max1: 102
+B_min1: 51
+B_max1: 100
 
 # Ring segmentation params for ring 2(middle ring)
 # R
-R_min2: 72
-R_max2: 95.000
+R_min2: 0
+R_max2: 255
 
 # G
-G_min2: 63.000
-G_max2: 98.000
+G_min2: 0
+G_max2: 90
 
 # B
-B_min2: 128.000
-B_max2: 207.000
+B_min2: 150
+B_max2: 200
 
 # Ring segmentation params for ring 3(outer ring)
 # R
-R_min3: 66
+R_min3: 42
 R_max3: 113
 
 # G
-G_min3: 49
-G_max3: 88
+G_min3: 47
+G_max3: 70
 
 # B
-B_min3: 59
-B_max3: 131
+B_min3: 0
+B_max3: 137
+
+# ring fallback distance
+ring_est_dist: 15

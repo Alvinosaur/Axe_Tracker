@@ -18,7 +18,7 @@ class NoRingError(Exception):
     pass
 
 def find_best_ring(img, R_bounds, G_bounds, B_bounds, hough_param1, 
-        hough_param2):
+        hough_param2, hough_dp):
 
     R, G, B = cv2.split(img)
     ret, maskR_low = cv2.threshold(R, R_bounds[0], MASK_VAL, cv2.THRESH_BINARY)
@@ -41,7 +41,7 @@ def find_best_ring(img, R_bounds, G_bounds, B_bounds, hough_param1,
         plt.imshow(combined_mask)
         plt.show()
     
-    circles = cv2.HoughCircles(combined_mask, cv2.HOUGH_GRADIENT, dp=1.2, 
+    circles = cv2.HoughCircles(combined_mask, cv2.HOUGH_GRADIENT, dp=hough_dp, 
         minDist=1, param1=hough_param1, param2=hough_param2)
         
     # ensure at least some circles were found
@@ -66,8 +66,8 @@ def draw_circles(img, circles):
     # draw the circle in the output image, then draw a rectangle
     # corresponding to the center of the circle
     for (x, y, r) in circles:
-        cv2.circle(img, (x, y), r, (0, 255, 0), 4)
-        cv2.rectangle(img, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
+        cv2.circle(img, (x, y), r, (0, 255, 0), 3)
+        cv2.rectangle(img, (x - 2, y - 2), (x + 2, y + 2), (0, 128, 255), -1)
 
 
 def main():
@@ -83,13 +83,14 @@ def main():
     img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
     
     # crop image to focus on the target
-    crop_bounds_w = (params["image_min_w"], params["image_max_w"])
-    crop_bounds_h = (params["image_min_h"], params["image_max_h"])
-    img1 = img1[crop_bounds_h[0]:crop_bounds_h[1], 
-                    crop_bounds_w[0]:crop_bounds_w[1]]
+    # crop_bounds_w = (params["image_min_w"], params["image_max_w"])
+    # crop_bounds_h = (params["image_min_h"], params["image_max_h"])
+    # img1 = img1[crop_bounds_h[0]:crop_bounds_h[1], 
+    #                 crop_bounds_w[0]:crop_bounds_w[1]]
 
     # threshold image by RGB values to isolate rings
     hough_p1, hough_p2 = params["param1"], params["param2"]
+    hough_dp = params["hough_dp"]
 
     # Inner ring
     R_bounds1 = (params["R_min1"], params["R_max1"])
@@ -106,33 +107,32 @@ def main():
     G_bounds3 = (params["G_min3"], params["G_max3"])
     B_bounds3 = (params["B_min3"], params["B_max3"])
 
+    # Ring distances
+    ring_est_dist = params["ring_est_dist"]
+
     # Find rings
     inner_ring = find_best_ring(img1, R_bounds1, G_bounds1, B_bounds1, 
-        hough_p1, hough_p2)
+        hough_p1, hough_p2, hough_dp)
     middle_ring = find_best_ring(img1, R_bounds2, G_bounds2, B_bounds2,
-        hough_p1, hough_p2)
+        hough_p1, hough_p2, hough_dp)
     outer_ring = find_best_ring(img1, R_bounds3, G_bounds3, B_bounds3,
-        hough_p1, hough_p2)
-
-    outer_ring = None
-    middle_ring = None
+        hough_p1, hough_p2, hough_dp)s
 
     if (inner_ring is None) and (middle_ring is None) and (outer_ring is None):
         raise(NoRingError("None of the 3 rings were found. Need to re-tune params!"))
 
     else:
-        rings = fill_missing_rings(inner_ring, middle_ring, outer_ring)
+        rings = fill_missing_rings(inner_ring, middle_ring, outer_ring, 
+            out_to_mid=ring_est_dist, mid_to_in=ring_est_dist)
         draw_circles(img1, rings)
         cv2.imshow("img1", img1)
         cv2.waitKey(0)
         return rings
 
 
-def fill_missing_rings(ring1, ring2, ring3):
+def fill_missing_rings(ring1, ring2, ring3, out_to_mid=65, mid_to_in=65):
     # returns original rings if all rings are present
     # else approximates missing rings as long as one ring present
-    out_to_mid = 65
-    mid_to_in = 65
     out_to_in = out_to_mid + mid_to_in
     if ring1 is None:
         if ring2 is None:
