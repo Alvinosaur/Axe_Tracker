@@ -168,7 +168,7 @@ def fill_missing_rings(ring1, ring2, ring3, out_to_mid=65, mid_to_in=65):
             if ring2 is None:
                 ring2 = (ring1[0], ring1[1], ring1[2]+mid_to_in)
 
-    return ring1, ring2, ring3
+    return [ring1, ring2, ring3]
 
 
 if __name__ == '__main__':

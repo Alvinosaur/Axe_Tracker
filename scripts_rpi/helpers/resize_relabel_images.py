@@ -16,18 +16,26 @@ target_center = (357, 347)  # (row, col), found manually
 orig_center = (350, 300)
 dcy, dcx = target_center[0] - orig_center[0], 0
 target_h, target_w = 512, 512
-
+cy, cx = target_center
+dy, dx = target_h//2, target_w//2
+top, bot, left, right = cy-dy, cy+dy, cx-dx, cx+dx
 
 def get_warp(orig_h, orig_w):
     cy, cx = target_center
     dy, dx = target_h//2, target_w//2
     top, bot, left, right = cy-dy, cy+dy, cx-dx, cx+dx
     
-    pts1 = np.float32([[0,0],[0,orig_w],[orig_h,0],[orig_h,orig_w]])
-    pts2 = np.float32([[top,left],[top,right],[bot,left],[bot,right]]) *  SCALE
+    pts1 = np.float32([[0,0],[0,orig_w],[orig_h,orig_w]])
+    pts2 = np.float32([[top,left],[top,right],[bot,right]])
     M = cv2.getAffineTransform(pts1, pts2)
     return M
 
+def transform_ring(ring):
+    cx, cy, r = ring
+    new_cx = int((cx - left) * SCALE)
+    new_cy = int((cy - top) * SCALE)
+    new_r = int(r  * SCALE)
+    return (new_cx, new_cy, new_r)
 
 def main():
     img_names = os.listdir(positives_dir)
@@ -99,4 +107,5 @@ def offset_label(file, shift_h, shift_w):
 
     return et, in_bounds
 
-main()
+if __name__ == "__main__":
+    main()

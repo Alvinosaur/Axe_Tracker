@@ -7,9 +7,10 @@ import pandas as pd
 import seaborn as sn
 import matplotlib.pyplot as plt
 
-from maskrcnn_approach.AxeDetectModel import AxeDetectModel
+from maskrcnn_approach.AxeDetectModel import AxeDetectModel, test as test_mcrnn
 from helpers.ring_detect import (
-    fill_missing_rings, find_best_ring, draw_circles, get_warp)
+    fill_missing_rings, find_best_ring, draw_circles, NoRingError)
+from helpers.resize_relabel_images import get_warp, transform_ring
 import yaml
 
 
@@ -17,6 +18,7 @@ DEBUG = True
 ONLY_USE_TEST = True
 if ONLY_USE_TEST: print("Only evaluating performance on test dataset!")
 YAML_FILEPATH = "params/default_params.yaml"
+full_size_dir = "/Users/Alvin/Documents/axe_images/positives"
 positives_dir = "/Users/Alvin/Documents/axe_images/new_positives"
 test_dir = "/Users/Alvin/Documents/axe_images/test"
 
@@ -127,10 +129,10 @@ if __name__ == '__main__':
     B_bounds3 = (params["B_min3"], params["B_max3"])
 
     # Ring distances
-    ring_est_dist = params["ring_est_dist_mini"]
+    ring_est_dist = params["ring_est_dist"]
 
     # MaskRCNN detection model
-    # mrcnn_model = AxeDetectModel()
+    mrcnn_model = AxeDetectModel()
 
     # confusion matrix to understand results
     labels = [0, 1, 3, 5]
@@ -148,23 +150,32 @@ if __name__ == '__main__':
     # already have difference images stored in differences folder
     pos_imgs = set(os.listdir(positives_dir))
     test_imgs = set(os.listdir(test_dir))
-    
+
     if ONLY_USE_TEST: pos_imgs = pos_imgs.intersection(test_imgs)
     if ".DS_Store" in pos_imgs: pos_imgs.remove(".DS_Store")
+
+    # Warp M to transform rings detected in original sized image to mini size
+    rand_file = pos_imgs.pop()
+    pos_imgs.add(rand_file)
+    rand_img = cv2.imread(os.path.join(full_size_dir, rand_file))
+    H, W, _ = rand_img.shape
+    M = get_warp(orig_h=H, orig_w=W)  # 2 x 3
 
     for img_file in pos_imgs:
         orig_img_path = os.path.join(positives_dir, img_file)
 
         true_score = get_labeled_score(img_file)
         orig_img = cv2.imread(orig_img_path)
-        orig_img_rgb = cv2.cvtColor(orig_img, cv2.COLOR_BGR2RGB)
+        full_size_img = cv2.cvtColor(
+            cv2.imread(os.path.join(full_size_dir, img_file)),
+            cv2.COLOR_BGR2RGB)
 
         # Find rings
         inner_ring = None  # inner ring is too unreliable with shrunken image
-        middle_ring = find_best_ring(orig_img_rgb, 
+        middle_ring = find_best_ring(full_size_img, 
             R_bounds2, G_bounds2, B_bounds2,
             hough_p1, hough_p2, hough_dp)
-        outer_ring = find_best_ring(orig_img_rgb, 
+        outer_ring = find_best_ring(full_size_img, 
             R_bounds3, G_bounds3, B_bounds3,
             hough_p1, hough_p2, hough_dp)
 
@@ -176,22 +187,25 @@ if __name__ == '__main__':
         # find rings and approximate true score
         rings = fill_missing_rings(inner_ring, middle_ring, outer_ring, 
             out_to_mid=ring_est_dist, mid_to_in=ring_est_dist)
+
+        for ri, (cx,cy,r) in enumerate(rings):
+            rings[ri] = transform_ring(rings[ri])
         
-        # detection = mrcnn_model.generate_prediction(orig_img)
-        # try:
-        #     approx_score = generate_score(detection, rings)
-        # except TypeError:
-        #     # no axe detected
-        #     print("NO AXE DETECTED!!!")
-        #     approx_score = 0
+        detection = mrcnn_model.generate_prediction(orig_img)
+        try:
+            approx_score = generate_score(detection, rings)
+        except TypeError:
+            # no axe detected
+            print("NO AXE DETECTED for img %s" % img_file)
+            approx_score = 0
 
         # debug drawing
         if DEBUG:
             try:
                 draw_circles(orig_img, rings)
-            except:
+            except Exception as e:
                 print(img_file)
-                print("RING ISSUE???")
+                print("RING ISSUE: %s" % e)
 
             cv2.imshow("Detected Rings", orig_img)
             cv2.waitKey(0)
