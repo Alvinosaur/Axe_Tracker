@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 
 DEBUG = False
 MASK_VAL = 255
-YAML_FILEPATH = "default_params.yaml"
+YAML_FILEPATH = "params/default_params.yaml"
 
 
 class NoRingError(Exception):
@@ -108,7 +108,11 @@ def main():
     B_bounds3 = (params["B_min3"], params["B_max3"])
 
     # Ring distances
-    ring_est_dist = params["ring_est_dist"]
+    is_mini_img = True
+    if is_mini_img:
+        ring_est_dist = params["ring_est_dist_mini"]
+    else:
+        ring_est_dist = params["ring_est_dist"]
 
     # Find rings
     inner_ring = find_best_ring(img1, R_bounds1, G_bounds1, B_bounds1, 
@@ -117,6 +121,9 @@ def main():
         hough_p1, hough_p2, hough_dp)
     outer_ring = find_best_ring(img1, R_bounds3, G_bounds3, B_bounds3,
         hough_p1, hough_p2, hough_dp)
+
+    middle_ring = None
+    inner_ring = None
 
     if (inner_ring is None) and (middle_ring is None) and (outer_ring is None):
         raise(NoRingError("None of the 3 rings were found. Need to re-tune params!"))
@@ -164,5 +171,5 @@ def fill_missing_rings(ring1, ring2, ring3, out_to_mid=65, mid_to_in=65):
     return ring1, ring2, ring3
 
 
-# if __name__ == '__main__':
-#     main()
+if __name__ == '__main__':
+    main()

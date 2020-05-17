@@ -1,3 +1,4 @@
+import numpy as np
 import cv2
 import os
 import xml.etree.ElementTree
@@ -15,6 +16,17 @@ target_center = (357, 347)  # (row, col), found manually
 orig_center = (350, 300)
 dcy, dcx = target_center[0] - orig_center[0], 0
 target_h, target_w = 512, 512
+
+
+def get_warp(orig_h, orig_w):
+    cy, cx = target_center
+    dy, dx = target_h//2, target_w//2
+    top, bot, left, right = cy-dy, cy+dy, cx-dx, cx+dx
+    
+    pts1 = np.float32([[0,0],[0,orig_w],[orig_h,0],[orig_h,orig_w]])
+    pts2 = np.float32([[top,left],[top,right],[bot,left],[bot,right]]) *  SCALE
+    M = cv2.getAffineTransform(pts1, pts2)
+    return M
 
 
 def main():

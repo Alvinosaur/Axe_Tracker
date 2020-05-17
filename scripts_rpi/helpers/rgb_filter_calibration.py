@@ -1,6 +1,7 @@
 import cv2
 import argparse
 import numpy as np
+import yaml
 
 def nothing(temp):
     return
@@ -18,6 +19,31 @@ def run_calibration_gui():
     args = parser.parse_args()
     img1 = cv2.imread(args.img1)
     img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+
+    YAML_FILEPATH = "full_size_img_params.yaml"
+    with open(YAML_FILEPATH, 'r') as f:
+        params = yaml.load(f)
+
+    hough_p1, hough_p2 = params["param1"], params["param2"]
+
+    # Inner ring
+    R_bounds1 = (params["R_min1"], params["R_max1"])
+    G_bounds1 = (params["G_min1"], params["G_max1"])
+    B_bounds1 = (params["B_min1"], params["B_max1"])
+
+    print(R_bounds1)
+    print(G_bounds1)
+    print(B_bounds1)
+
+    # Middle ring
+    R_bounds2 = (params["R_min2"], params["R_max2"])
+    G_bounds2 = (params["G_min2"], params["G_max2"])
+    B_bounds2 = (params["B_min2"], params["B_max2"])
+
+    # Outer ring
+    R_bounds3 = (params["R_min3"], params["R_max3"])
+    G_bounds3 = (params["G_min3"], params["G_max3"])
+    B_bounds3 = (params["B_min3"], params["B_max3"])
 
     # Ordered from min to max HSV
     param_names = ['R_MIN', 'G_MIN', 'B_MIN', 'R_MAX', 'G_MAX', 'B_MAX']
@@ -53,7 +79,7 @@ def run_calibration_gui():
             value = cv2.getTrackbarPos(param_name, "Filter GUI")
             # follow hsv guide, but scale to match opencv2's scale
             temp.append(value)
-
+        
         print(temp)
         
         # 3 x 1 vec of min/max HSV

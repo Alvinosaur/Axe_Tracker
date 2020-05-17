@@ -1,0 +1,1 @@
+PLEASE RUN SCRIPTS FROM THE "scripts_rpi" root directory!!! 
