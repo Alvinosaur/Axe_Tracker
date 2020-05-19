@@ -7,15 +7,15 @@ import pandas as pd
 import seaborn as sn
 import matplotlib.pyplot as plt
 
-from process_image import find_axe_tip
-from ring_detect import fill_missing_rings, find_best_ring, draw_circles
+from classical_approach.process_image import find_axe_tip
+from helpers.ring_detect import fill_missing_rings, find_best_ring, draw_circles
 import yaml
 
 
 DEBUG = False
 ONLY_USE_TEST = True
 if ONLY_USE_TEST: print("Only evaluating performance on test dataset!")
-YAML_FILEPATH = "default_params.yaml"
+YAML_FILEPATH = "params/default_params.yaml"
 positives_dir = "../../../axe_images/positives"
 test_dir = "../../../axe_images/test"
 diff_img_dir = "../../../axe_images/differences"
@@ -90,6 +90,7 @@ if __name__ == '__main__':
 
     # threshold image by RGB values to isolate rings
     hough_p1, hough_p2 = params["param1"], params["param2"]
+    hough_dp = params["hough_dp"]
 
     # Inner ring
     R_bounds1 = (params["R_min1"], params["R_max1"])
@@ -124,8 +125,7 @@ if __name__ == '__main__':
     test_imgs = set(os.listdir(test_dir))
     
     if ONLY_USE_TEST: diff_imgs = diff_imgs.intersection(test_imgs)
-    # plot_score_distib(diff_imgs)
-    # exit()
+    total_time = 0
     for img_file in diff_imgs:
         # both diff images and positives have same filename
         diff_img_path = os.path.join(diff_img_dir, img_file)
@@ -135,15 +135,18 @@ if __name__ == '__main__':
 
         diff_img_color = cv2.imread(diff_img_path)
         diff_img = cv2.cvtColor(diff_img_color, cv2.COLOR_BGR2GRAY)
-        orig_img = cv2.imread(orig_img_path)
+        orig_img = cv2.cvtColor(cv2.imread(orig_img_path), cv2.COLOR_BGR2RGB)
 
         # Find rings
-        inner_ring = find_best_ring(orig_img, R_bounds1, G_bounds1, B_bounds1, 
-            hough_p1, hough_p2)
-        middle_ring = find_best_ring(orig_img, R_bounds2, G_bounds2, B_bounds2,
-            hough_p1, hough_p2)
-        outer_ring = find_best_ring(orig_img, R_bounds3, G_bounds3, B_bounds3,
-            hough_p1, hough_p2)
+        inner_ring = find_best_ring(orig_img, 
+            R_bounds1, G_bounds1, B_bounds1, 
+            hough_p1, hough_p2, hough_dp)
+        middle_ring = find_best_ring(orig_img, 
+            R_bounds2, G_bounds2, B_bounds2,
+            hough_p1, hough_p2, hough_dp)
+        outer_ring = find_best_ring(orig_img, 
+            R_bounds3, G_bounds3, B_bounds3,
+            hough_p1, hough_p2, hough_dp)
 
         if ((inner_ring is None) and (middle_ring is None) and 
             (outer_ring is None)):
@@ -152,9 +155,12 @@ if __name__ == '__main__':
         
         # find rings and approximate true score
         rings = fill_missing_rings(inner_ring, middle_ring, outer_ring)
+
+        start = time.time()
         axe_tip, box = find_axe_tip(diff_img)
-        
         approx_score = generate_score(axe_tip, rings)
+        end = time.time()
+        total_time += (end - start)
 
         ## debug drawing
         if DEBUG:
@@ -168,6 +174,7 @@ if __name__ == '__main__':
             score_to_idx[true_score], 
             score_to_idx[approx_score]] += 1
 
+    print("Average runtime: %.5f" % (total_time / float(len(diff_imgs))))
     print("Skipped images b/c missing rings:")
     print(missing_rings_imgs)
 

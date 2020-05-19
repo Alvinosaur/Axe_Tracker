@@ -30,34 +30,62 @@ def get_labeled_score(img_file):
     score = int(img_file[-5])
     return score
 
-def generate_score(detection, rings):
-    detected_mask = detection["masks"][0]
-    # generate bounding box with corners of detected mask
-    image, cnt, hierarchy = cv2.findContours(detected_mask, 
-        cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+def generate_score(orig_img, detection, rings):
+    detected_mask = detection["masks"][:,:,0].astype("uint8") * 255
+    # if DEBUG:
+    #     plt.imshow(detected_mask)
+    #     plt.show()
     
-    if DEBUG:
-        img = cv2.drawContours(image, cnt, 3, (0,255,0), 3)
-        cv2.imshow('im', img)
-        cv2.waitKey(0)
+    # generate bounding box with corners of detected mask
+    _, cnt, hierarchy = cv2.findContours(detected_mask, 
+        cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
-    minx = cnt[cnt[:,:,0].argmin()][0]
-    maxx = cnt[cnt[:,:,0].argmax()][0]
-    miny = cnt[cnt[:,:,1].argmin()][0]
-    maxy = cnt[cnt[:,:,1].argmax()][0]
+    cnt = cnt[0].reshape(-1,2)
+    minxi, maxxi = cnt[:,0].argmin(), cnt[:,0].argmax()
+    minx, maxx = cnt[minxi, 0], cnt[maxxi, 0]
+    minyi, maxyi = cnt[:,1].argmin(), cnt[:,1].argmax()
+    miny, maxy = cnt[minyi, 1], cnt[maxyi, 1]
     corners = [(minx, miny), (minx, maxy), (maxx, miny), (maxx, maxy)]
+    
+    true_score = None
     scores = [5, 3, 1]
     assert(len(rings) == 3)
     # rings in order [inner: 5, middle: 3, outer: 1]
     for i in range(len(rings)):
         (cx, cy, r) = rings[i]
         # if axe tip within bounds of ring
+        if true_score is not None: break
         for (tx, ty) in corners:
             # if corner of bounding box lies within circle
             # return highest score
             if (tx - cx)**2 + (ty - cy)**2 <= r**2:
                 print("Score: %d" %  scores[i])
-                return scores[i]
+                true_score = scores[i]
+
+    if DEBUG:
+        print("Showing contour corners...")
+        image = np.copy(orig_img)
+        for (x, y) in corners:
+            image = cv2.circle(image, (x,y), radius=1, color=(0, 0, 255), 
+                thickness=-1)
+        draw_circles(image, rings, thickness=1)
+        plt.imshow(image)
+        plt.show()
+
+    # scores = [5, 3, 1]
+    # assert(len(rings) == 3)
+    # # rings in order [inner: 5, middle: 3, outer: 1]
+    # for i in range(len(rings)):
+    #     (cx, cy, r) = rings[i]
+    #     # if axe tip within bounds of ring
+    #     for (tx, ty) in corners:
+    #         # if corner of bounding box lies within circle
+    #         # return highest score
+    #         if (tx - cx)**2 + (ty - cy)**2 <= r**2:
+    #             print("Score: %d" %  scores[i])
+    #             true_score = scores[i]
+    #             break
+                # return scores[i]
     
     # if axe wasn't in any ring, return score 0
     print("No Axe Detected, Score: 0")
@@ -132,6 +160,8 @@ if __name__ == '__main__':
     ring_est_dist = params["ring_est_dist"]
 
     # MaskRCNN detection model
+    # mrcnn_model = AxeDetectModel(weights_path="maskrcnn_approach/mask_rcnn_axe_0060.h5")
+    # mrcnn_model = AxeDetectModel(weights_path="maskrcnn_approach/mask_rcnn_axe_0060.h5")
     mrcnn_model = AxeDetectModel()
 
     # confusion matrix to understand results
@@ -154,18 +184,15 @@ if __name__ == '__main__':
     if ONLY_USE_TEST: pos_imgs = pos_imgs.intersection(test_imgs)
     if ".DS_Store" in pos_imgs: pos_imgs.remove(".DS_Store")
 
-    # Warp M to transform rings detected in original sized image to mini size
-    rand_file = pos_imgs.pop()
-    pos_imgs.add(rand_file)
-    rand_img = cv2.imread(os.path.join(full_size_dir, rand_file))
-    H, W, _ = rand_img.shape
-    M = get_warp(orig_h=H, orig_w=W)  # 2 x 3
-
+    no_detect_count = 0
+    total_time = 0
     for img_file in pos_imgs:
         orig_img_path = os.path.join(positives_dir, img_file)
 
         true_score = get_labeled_score(img_file)
+        print("True Score: %d" % true_score)
         orig_img = cv2.imread(orig_img_path)
+        # mrcnn_model.test(orig_img)
         full_size_img = cv2.cvtColor(
             cv2.imread(os.path.join(full_size_dir, img_file)),
             cv2.COLOR_BGR2RGB)
@@ -191,34 +218,44 @@ if __name__ == '__main__':
         for ri, (cx,cy,r) in enumerate(rings):
             rings[ri] = transform_ring(rings[ri])
         
+        start = time.time()
         detection = mrcnn_model.generate_prediction(orig_img)
         try:
-            approx_score = generate_score(detection, rings)
-        except TypeError:
+            approx_score = generate_score(orig_img, detection, rings)
+        except Exception as e:
             # no axe detected
-            print("NO AXE DETECTED for img %s" % img_file)
+            print("NO AXE DETECTED for img %s because %s" % (img_file, e))
             approx_score = 0
+            no_detect_count += 1
+            if DEBUG:
+                plt.imshow(orig_img)
+                plt.show()
+        end = time.time()
+        total_time += (end - start)
 
         # debug drawing
-        if DEBUG:
-            try:
-                draw_circles(orig_img, rings)
-            except Exception as e:
-                print(img_file)
-                print("RING ISSUE: %s" % e)
+        # if DEBUG:
+        #     try:
+        #         draw_circles(orig_img, rings, thickness=1)
+        #     except Exception as e:
+        #         print(img_file)
+        #         print("RING ISSUE: %s" % e)
 
-            cv2.imshow("Detected Rings", orig_img)
-            cv2.waitKey(0)
-
-        continue
+        #     cv2.imshow("Detected Rings", orig_img)
+        #     cv2.waitKey(0)
 
         # update confusion matrix
         confusion_matrix[
             score_to_idx[true_score], 
             score_to_idx[approx_score]] += 1
 
+    print("Average runtime: %.2f" % (total_time / float(len(pos_imgs))))
+
     print("Skipped images b/c missing rings:")
     print(missing_rings_imgs)
+
+    no_detect_rate = no_detect_count / float(len(pos_imgs))
+    print("Percent No Detections: %.2f" % no_detect_rate)
 
     print("confusion matrix:")
     print(confusion_matrix)
@@ -230,8 +267,11 @@ if __name__ == '__main__':
         np.reshape(np.sum(confusion_matrix,1), (4,1)))
     precision = np.diag(
         confusion_matrix / np.sum(confusion_matrix))
+    print("Accuracy:")
     print(accuracy)
+    print("Recall:")
     print(recall)
+    print("Precision")
     print(precision)
 
     print("normalized confusion matrix:")

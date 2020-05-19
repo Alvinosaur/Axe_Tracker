@@ -62,11 +62,11 @@ def find_best_ring(img, R_bounds, G_bounds, B_bounds, hough_param1,
         return None
 
 
-def draw_circles(img, circles):
+def draw_circles(img, circles, thickness=3):
     # draw the circle in the output image, then draw a rectangle
     # corresponding to the center of the circle
     for (x, y, r) in circles:
-        cv2.circle(img, (x, y), r, (0, 255, 0), 3)
+        cv2.circle(img, (x, y), r, (0, 255, 0), thickness)
         cv2.rectangle(img, (x - 2, y - 2), (x + 2, y + 2), (0, 128, 255), -1)
 
 
