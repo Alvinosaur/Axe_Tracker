@@ -14,7 +14,7 @@ from helpers.resize_relabel_images import get_warp, transform_ring
 import yaml
 
 
-DEBUG = True
+DEBUG = False
 ONLY_USE_TEST = True
 if ONLY_USE_TEST: print("Only evaluating performance on test dataset!")
 YAML_FILEPATH = "params/default_params.yaml"
@@ -32,9 +32,9 @@ def get_labeled_score(img_file):
 
 def generate_score(orig_img, detection, rings):
     detected_mask = detection["masks"][:,:,0].astype("uint8") * 255
-    # if DEBUG:
-    #     plt.imshow(detected_mask)
-    #     plt.show()
+    if DEBUG:
+        plt.imshow(detected_mask)
+        plt.show()
     
     # generate bounding box with corners of detected mask
     _, cnt, hierarchy = cv2.findContours(detected_mask, 
@@ -47,20 +47,6 @@ def generate_score(orig_img, detection, rings):
     miny, maxy = cnt[minyi, 1], cnt[maxyi, 1]
     corners = [(minx, miny), (minx, maxy), (maxx, miny), (maxx, maxy)]
     
-    true_score = None
-    scores = [5, 3, 1]
-    assert(len(rings) == 3)
-    # rings in order [inner: 5, middle: 3, outer: 1]
-    for i in range(len(rings)):
-        (cx, cy, r) = rings[i]
-        # if axe tip within bounds of ring
-        if true_score is not None: break
-        for (tx, ty) in corners:
-            # if corner of bounding box lies within circle
-            # return highest score
-            if (tx - cx)**2 + (ty - cy)**2 <= r**2:
-                print("Score: %d" %  scores[i])
-                true_score = scores[i]
 
     if DEBUG:
         print("Showing contour corners...")
@@ -68,24 +54,21 @@ def generate_score(orig_img, detection, rings):
         for (x, y) in corners:
             image = cv2.circle(image, (x,y), radius=1, color=(0, 0, 255), 
                 thickness=-1)
-        draw_circles(image, rings, thickness=1)
         plt.imshow(image)
         plt.show()
 
-    # scores = [5, 3, 1]
-    # assert(len(rings) == 3)
-    # # rings in order [inner: 5, middle: 3, outer: 1]
-    # for i in range(len(rings)):
-    #     (cx, cy, r) = rings[i]
-    #     # if axe tip within bounds of ring
-    #     for (tx, ty) in corners:
-    #         # if corner of bounding box lies within circle
-    #         # return highest score
-    #         if (tx - cx)**2 + (ty - cy)**2 <= r**2:
-    #             print("Score: %d" %  scores[i])
-    #             true_score = scores[i]
-    #             break
-                # return scores[i]
+    scores = [5, 3, 1]
+    assert(len(rings) == 3)
+    # rings in order [inner: 5, middle: 3, outer: 1]
+    for i in range(len(rings)):
+        (cx, cy, r) = rings[i]
+        # if axe tip within bounds of ring
+        for (tx, ty) in corners:
+            # if corner of bounding box lies within circle
+            # return highest score
+            if (tx - cx)**2 + (ty - cy)**2 <= r**2:
+                print("Score: %d" %  scores[i])
+                return scores[i]
     
     # if axe wasn't in any ring, return score 0
     print("No Axe Detected, Score: 0")
@@ -190,8 +173,10 @@ if __name__ == '__main__':
         orig_img_path = os.path.join(positives_dir, img_file)
 
         true_score = get_labeled_score(img_file)
-        print("True Score: %d" % true_score)
         orig_img = cv2.imread(orig_img_path)
+        if DEBUG:
+            cv2.imshow("orig", orig_img)
+            cv2.waitKey(0)
         # mrcnn_model.test(orig_img)
         full_size_img = cv2.cvtColor(
             cv2.imread(os.path.join(full_size_dir, img_file)),
@@ -227,22 +212,19 @@ if __name__ == '__main__':
             print("NO AXE DETECTED for img %s because %s" % (img_file, e))
             approx_score = 0
             no_detect_count += 1
-            if DEBUG:
-                plt.imshow(orig_img)
-                plt.show()
         end = time.time()
         total_time += (end - start)
 
         # debug drawing
-        # if DEBUG:
-        #     try:
-        #         draw_circles(orig_img, rings, thickness=1)
-        #     except Exception as e:
-        #         print(img_file)
-        #         print("RING ISSUE: %s" % e)
+        if DEBUG:
+            try:
+                draw_circles(orig_img, rings, thickness=1)
+            except Exception as e:
+                print(img_file)
+                print("RING ISSUE: %s" % e)
 
-        #     cv2.imshow("Detected Rings", orig_img)
-        #     cv2.waitKey(0)
+            cv2.imshow("Detected Rings", orig_img)
+            cv2.waitKey(0)
 
         # update confusion matrix
         confusion_matrix[
