@@ -14,7 +14,7 @@ from helpers.resize_relabel_images import get_warp, transform_ring
 import yaml
 
 
-DEBUG = False
+DEBUG = True
 ONLY_USE_TEST = True
 if ONLY_USE_TEST: print("Only evaluating performance on test dataset!")
 YAML_FILEPATH = "params/default_params.yaml"
@@ -32,9 +32,9 @@ def get_labeled_score(img_file):
 
 def generate_score(orig_img, detection, rings):
     detected_mask = detection["masks"][:,:,0].astype("uint8") * 255
-    if DEBUG:
-        plt.imshow(detected_mask)
-        plt.show()
+    # if DEBUG:
+    #     plt.imshow(detected_mask)
+    #     plt.show()
     
     # generate bounding box with corners of detected mask
     _, cnt, hierarchy = cv2.findContours(detected_mask, 
@@ -48,14 +48,14 @@ def generate_score(orig_img, detection, rings):
     corners = [(minx, miny), (minx, maxy), (maxx, miny), (maxx, maxy)]
     
 
-    if DEBUG:
-        print("Showing contour corners...")
-        image = np.copy(orig_img)
-        for (x, y) in corners:
-            image = cv2.circle(image, (x,y), radius=1, color=(0, 0, 255), 
-                thickness=-1)
-        plt.imshow(image)
-        plt.show()
+    # if DEBUG:
+    #     print("Showing contour corners...")
+    #     image = np.copy(orig_img)
+    #     for (x, y) in corners:
+    #         image = cv2.circle(image, (x,y), radius=1, color=(0, 0, 255), 
+    #             thickness=-1)
+    #     plt.imshow(image)
+    #     plt.show()
 
     scores = [5, 3, 1]
     assert(len(rings) == 3)
@@ -68,11 +68,11 @@ def generate_score(orig_img, detection, rings):
             # return highest score
             if (tx - cx)**2 + (ty - cy)**2 <= r**2:
                 print("Score: %d" %  scores[i])
-                return scores[i]
+                return scores[i], corners
     
     # if axe wasn't in any ring, return score 0
     print("No Axe Detected, Score: 0")
-    return 0
+    return 0, corners
 
 def plot_confusion_matrix(mat, labels, title):
     df_cm = pd.DataFrame(mat, labels, labels)
@@ -140,12 +140,16 @@ if __name__ == '__main__':
     B_bounds3 = (params["B_min3"], params["B_max3"])
 
     # Ring distances
-    ring_est_dist = params["ring_est_dist"]
+    is_mini_img = True
+    if is_mini_img:
+        ring_est_dist = params["ring_est_dist_mini"]
+    else:
+        ring_est_dist = params["ring_est_dist"]
 
     # MaskRCNN detection model
     # mrcnn_model = AxeDetectModel(weights_path="maskrcnn_approach/mask_rcnn_axe_0060.h5")
-    # mrcnn_model = AxeDetectModel(weights_path="maskrcnn_approach/mask_rcnn_axe_0060.h5")
-    mrcnn_model = AxeDetectModel()
+    mrcnn_model = AxeDetectModel(weights_path="maskrcnn_approach/mask_rcnn_axe_0060.h5")
+    # mrcnn_model = AxeDetectModel()
 
     # confusion matrix to understand results
     labels = [0, 1, 3, 5]
@@ -170,26 +174,28 @@ if __name__ == '__main__':
     no_detect_count = 0
     total_time = 0
     for img_file in pos_imgs:
+        print("Img: %s" % img_file)
         orig_img_path = os.path.join(positives_dir, img_file)
 
         true_score = get_labeled_score(img_file)
         orig_img = cv2.imread(orig_img_path)
-        if DEBUG:
-            cv2.imshow("orig", orig_img)
-            cv2.waitKey(0)
+        orig_img_RGV = cv2.cvtColor(orig_img, cv2.COLOR_BGR2RGB)
         # mrcnn_model.test(orig_img)
-        full_size_img = cv2.cvtColor(
-            cv2.imread(os.path.join(full_size_dir, img_file)),
-            cv2.COLOR_BGR2RGB)
 
         # Find rings
-        inner_ring = None  # inner ring is too unreliable with shrunken image
-        middle_ring = find_best_ring(full_size_img, 
+        # print("Inner")
+        # inner_ring = find_best_ring(orig_img_RGV, 
+        #     R_bounds1, G_bounds1, B_bounds1,
+        #     hough_p1, hough_p2, hough_dp, ring_est_dist)
+        inner_ring = None  # can be easily distorted by axe, just hardcode based off other detected axes
+        print("Mid")
+        middle_ring = find_best_ring(orig_img_RGV, 
             R_bounds2, G_bounds2, B_bounds2,
-            hough_p1, hough_p2, hough_dp)
-        outer_ring = find_best_ring(full_size_img, 
+            hough_p1, hough_p2, hough_dp, 2*ring_est_dist)
+        print("Outer")
+        outer_ring = find_best_ring(orig_img_RGV, 
             R_bounds3, G_bounds3, B_bounds3,
-            hough_p1, hough_p2, hough_dp)
+            hough_p1, hough_p2, hough_dp, 3*ring_est_dist)
 
         if ((inner_ring is None) and (middle_ring is None) and 
             (outer_ring is None)):
@@ -200,31 +206,40 @@ if __name__ == '__main__':
         rings = fill_missing_rings(inner_ring, middle_ring, outer_ring, 
             out_to_mid=ring_est_dist, mid_to_in=ring_est_dist)
 
-        for ri, (cx,cy,r) in enumerate(rings):
-            rings[ri] = transform_ring(rings[ri])
+        # for ri, (cx,cy,r) in enumerate(rings):
+        #     rings[ri] = transform_ring(rings[ri])
         
         start = time.time()
         detection = mrcnn_model.generate_prediction(orig_img)
         try:
-            approx_score = generate_score(orig_img, detection, rings)
+            approx_score, corners = generate_score(orig_img, detection, rings)
+            no_detect = False
         except Exception as e:
             # no axe detected
             print("NO AXE DETECTED for img %s because %s" % (img_file, e))
             approx_score = 0
             no_detect_count += 1
+            no_detect = True
+            corners = []
         end = time.time()
         total_time += (end - start)
 
         # debug drawing
         if DEBUG:
             try:
-                draw_circles(orig_img, rings, thickness=1)
+                draw_circles(orig_img_RGV, rings, thickness=1)
             except Exception as e:
                 print(img_file)
                 print("RING ISSUE: %s" % e)
 
-            cv2.imshow("Detected Rings", orig_img)
-            cv2.waitKey(0)
+            for (x, y) in corners:
+                orig_img_RGV = cv2.circle(orig_img_RGV, (x,y), radius=1, 
+                    color=(0, 0, 255), thickness=-1)
+
+            if true_score != approx_score and not no_detect:
+                print("True, Approx: (%d, %d)" % (true_score, approx_score))
+                plt.imshow(orig_img_RGV)
+                plt.show()
 
         # update confusion matrix
         confusion_matrix[
