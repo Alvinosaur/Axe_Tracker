@@ -8,6 +8,7 @@ import time
 import yaml
 from matplotlib import pyplot as plt
 
+from helpers.ransac_circle import run_ransac
 
 DEBUG = False
 MASK_VAL = 255
@@ -18,7 +19,7 @@ class NoRingError(Exception):
     pass
 
 def find_best_ring(img, R_bounds, G_bounds, B_bounds, hough_param1, 
-        hough_param2, hough_dp):
+        hough_param2, hough_dp, ring_est_dist):
 
     R, G, B = cv2.split(img)
     ret, maskR_low = cv2.threshold(R, R_bounds[0], MASK_VAL, cv2.THRESH_BINARY)
@@ -37,17 +38,21 @@ def find_best_ring(img, R_bounds, G_bounds, B_bounds, hough_param1,
     combined_mask = cv2.bitwise_and(combined_mask, maskB)
     
     if DEBUG:
-        # use pyplot instead of cv2 imshow to see actual pixel values
+        # use pyplot instead of cv2 imshow to sece actual pixel values
         plt.imshow(combined_mask)
         plt.show()
     
-    circles = cv2.HoughCircles(combined_mask, cv2.HOUGH_GRADIENT, dp=hough_dp, 
-        minDist=1, param1=hough_param1, param2=hough_param2)
+    # circles = cv2.HoughCircles(combined_mask, cv2.HOUGH_GRADIENT, dp=hough_dp, 
+    #     minDist=1, param1=hough_param1, param2=hough_param2)
+    pts = np.transpose(np.nonzero(combined_mask))
+    (ransac_center, ransac_rad), _ = run_ransac(pts, max_iters=2000, 
+        inlier_thresh=0.05*ring_est_dist)
+    circles = [(int(ransac_center[0]), int(ransac_center[1]), int(ransac_rad))]
         
     # ensure at least some circles were found
     if circles is not None:
         # convert the (x, y) coordinates and radius of the circles to integers
-        circles = np.round(circles[0, :]).astype("int")
+        # circles = np.round(circles[0, :]).astype("int")
 
         if DEBUG:
             x, y, r = circles[0]
@@ -116,11 +121,11 @@ def main():
 
     # Find rings
     inner_ring = find_best_ring(img1, R_bounds1, G_bounds1, B_bounds1, 
-        hough_p1, hough_p2, hough_dp)
+        hough_p1, hough_p2, hough_dp, ring_est_dist)
     middle_ring = find_best_ring(img1, R_bounds2, G_bounds2, B_bounds2,
-        hough_p1, hough_p2, hough_dp)
+        hough_p1, hough_p2, hough_dp, 2*ring_est_dist)
     outer_ring = find_best_ring(img1, R_bounds3, G_bounds3, B_bounds3,
-        hough_p1, hough_p2, hough_dp)
+        hough_p1, hough_p2, hough_dp, 3*ring_est_dist)
 
     middle_ring = None
     inner_ring = None
@@ -131,7 +136,7 @@ def main():
     else:
         rings = fill_missing_rings(inner_ring, middle_ring, outer_ring, 
             out_to_mid=ring_est_dist, mid_to_in=ring_est_dist)
-        draw_circles(img1, rings)
+        draw_circles(img1, rings, thickness=2)
         cv2.imshow("img1", img1)
         cv2.waitKey(0)
         return rings

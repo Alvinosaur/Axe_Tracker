@@ -21,6 +21,7 @@ YAML_FILEPATH = "params/default_params.yaml"
 full_size_dir = "/Users/Alvin/Documents/axe_images/positives"
 positives_dir = "/Users/Alvin/Documents/axe_images/new_positives"
 test_dir = "/Users/Alvin/Documents/axe_images/test"
+ring_calib_file = "mini_ring_calib.png"
 
 # /Users/Alvin/Documents/axe_images/test/2019-11-09_03:39:11_diff:1129_score:3.png
 
@@ -146,9 +147,25 @@ if __name__ == '__main__':
     else:
         ring_est_dist = params["ring_est_dist"]
 
+    # run ring detection only once on image without any axe
+    no_axe_img = cv2.cvtColor(cv2.imread(ring_calib_file), cv2.COLOR_BGR2RGB)
+    inner_ring = find_best_ring(no_axe_img, 
+        R_bounds1, G_bounds1, B_bounds1,
+        hough_p1, hough_p2, hough_dp, ring_est_dist)
+    middle_ring = find_best_ring(no_axe_img, 
+        R_bounds2, G_bounds2, B_bounds2,
+        hough_p1, hough_p2, hough_dp, 2*ring_est_dist)
+    outer_ring = find_best_ring(no_axe_img, 
+        R_bounds3, G_bounds3, B_bounds3,
+        hough_p1, hough_p2, hough_dp, 3*ring_est_dist)
+    
+    # find rings and approximate true score
+    rings = fill_missing_rings(inner_ring, middle_ring, outer_ring, 
+        out_to_mid=ring_est_dist, mid_to_in=ring_est_dist)
+
     # MaskRCNN detection model
     # mrcnn_model = AxeDetectModel(weights_path="maskrcnn_approach/mask_rcnn_axe_0060.h5")
-    mrcnn_model = AxeDetectModel(weights_path="maskrcnn_approach/mask_rcnn_axe_0060.h5")
+    mrcnn_model = AxeDetectModel(weights_path="maskrcnn_approach/mask_rcnn_axe_0128.h5")
     # mrcnn_model = AxeDetectModel()
 
     # confusion matrix to understand results
@@ -188,23 +205,6 @@ if __name__ == '__main__':
         #     R_bounds1, G_bounds1, B_bounds1,
         #     hough_p1, hough_p2, hough_dp, ring_est_dist)
         inner_ring = None  # can be easily distorted by axe, just hardcode based off other detected axes
-        print("Mid")
-        middle_ring = find_best_ring(orig_img_RGV, 
-            R_bounds2, G_bounds2, B_bounds2,
-            hough_p1, hough_p2, hough_dp, 2*ring_est_dist)
-        print("Outer")
-        outer_ring = find_best_ring(orig_img_RGV, 
-            R_bounds3, G_bounds3, B_bounds3,
-            hough_p1, hough_p2, hough_dp, 3*ring_est_dist)
-
-        if ((inner_ring is None) and (middle_ring is None) and 
-            (outer_ring is None)):
-            missing_rings_imgs.append(img_file)
-            continue
-        
-        # find rings and approximate true score
-        rings = fill_missing_rings(inner_ring, middle_ring, outer_ring, 
-            out_to_mid=ring_est_dist, mid_to_in=ring_est_dist)
 
         # for ri, (cx,cy,r) in enumerate(rings):
         #     rings[ri] = transform_ring(rings[ri])
@@ -242,9 +242,10 @@ if __name__ == '__main__':
                 plt.show()
 
         # update confusion matrix
-        confusion_matrix[
-            score_to_idx[true_score], 
-            score_to_idx[approx_score]] += 1
+        if not no_detect:
+            confusion_matrix[
+                score_to_idx[true_score], 
+                score_to_idx[approx_score]] += 1
 
     print("Average runtime: %.2f" % (total_time / float(len(pos_imgs))))
 

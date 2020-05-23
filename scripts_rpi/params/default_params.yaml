@@ -26,29 +26,29 @@ hough_dp: 1.2
 
 # Ring segmentation params for ring 1(inner ring)
 # R
-R_min1: 20
-R_max1: 46
+R_min1: 0
+R_max1: 56
 
 # G
-G_min1: 45
-G_max1: 73
+G_min1: 56
+G_max1: 147
 
 # B
-B_min1: 51
-B_max1: 100
+B_min1: 0
+B_max1: 127
 
 # Ring segmentation params for ring 2(middle ring)
 # R
-R_min2: 46
-R_max2: 83
+R_min2: 52
+R_max2: 114
 
 # G
-G_min2: 51
-G_max2: 98
+G_min2: 38
+G_max2: 99
 
 # B
-B_min2: 149
-B_max2: 208
+B_min2: 145
+B_max2: 255
 
 # Ring segmentation params for ring 3(outer ring)
 # R
@@ -63,14 +63,14 @@ B_max2: 208
 # B_min3: 0
 # B_max3: 137
 
-R_min3: 33.000
-R_max3: 92.000
+R_min3: 45
+R_max3: 103
 
-G_min3: 42.000
-G_max3: 90.000
+G_min3: 52
+G_max3: 95
 
-B_min3: 70.000
-B_max3: 157.000
+B_min3: 0
+B_max3: 133
 
 # ring fallback distance
 ring_est_dist: 65
