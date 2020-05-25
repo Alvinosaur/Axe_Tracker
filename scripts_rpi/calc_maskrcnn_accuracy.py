@@ -14,14 +14,15 @@ from helpers.resize_relabel_images import get_warp, transform_ring
 import yaml
 
 
-DEBUG = True
+DEBUG = False
 ONLY_USE_TEST = True
 if ONLY_USE_TEST: print("Only evaluating performance on test dataset!")
 YAML_FILEPATH = "params/default_params.yaml"
 full_size_dir = "/Users/Alvin/Documents/axe_images/positives"
 positives_dir = "/Users/Alvin/Documents/axe_images/new_positives"
 test_dir = "/Users/Alvin/Documents/axe_images/test"
-ring_calib_file = "mini_ring_calib.png"
+ring_calib_dir = "/Users/Alvin/Documents/axe_images/ring_calib"
+pos_to_neg_file = "pos_to_neg_mapping.npz"
 
 # /Users/Alvin/Documents/axe_images/test/2019-11-09_03:39:11_diff:1129_score:3.png
 
@@ -147,21 +148,9 @@ if __name__ == '__main__':
     else:
         ring_est_dist = params["ring_est_dist"]
 
-    # run ring detection only once on image without any axe
-    no_axe_img = cv2.cvtColor(cv2.imread(ring_calib_file), cv2.COLOR_BGR2RGB)
-    inner_ring = find_best_ring(no_axe_img, 
-        R_bounds1, G_bounds1, B_bounds1,
-        hough_p1, hough_p2, hough_dp, ring_est_dist)
-    middle_ring = find_best_ring(no_axe_img, 
-        R_bounds2, G_bounds2, B_bounds2,
-        hough_p1, hough_p2, hough_dp, 2*ring_est_dist)
-    outer_ring = find_best_ring(no_axe_img, 
-        R_bounds3, G_bounds3, B_bounds3,
-        hough_p1, hough_p2, hough_dp, 3*ring_est_dist)
-    
-    # find rings and approximate true score
-    rings = fill_missing_rings(inner_ring, middle_ring, outer_ring, 
-        out_to_mid=ring_est_dist, mid_to_in=ring_est_dist)
+    # Load positive-to-negative mapping
+    data = np.load(pos_to_neg_file, allow_pickle=True)
+    pos_to_neg = data["pos_to_neg"].item()
 
     # MaskRCNN detection model
     # mrcnn_model = AxeDetectModel(weights_path="maskrcnn_approach/mask_rcnn_axe_0060.h5")
@@ -200,11 +189,23 @@ if __name__ == '__main__':
         # mrcnn_model.test(orig_img)
 
         # Find rings
-        # print("Inner")
-        # inner_ring = find_best_ring(orig_img_RGV, 
-        #     R_bounds1, G_bounds1, B_bounds1,
-        #     hough_p1, hough_p2, hough_dp, ring_est_dist)
-        inner_ring = None  # can be easily distorted by axe, just hardcode based off other detected axes
+        # run ring detection only once on image without any axe
+        no_axe_img_path = os.path.join(ring_calib_dir, pos_to_neg[img_file])
+        no_axe_img = cv2.cvtColor(cv2.imread(no_axe_img_path), 
+            cv2.COLOR_BGR2RGB)
+        inner_ring = find_best_ring(no_axe_img, 
+            R_bounds1, G_bounds1, B_bounds1,
+            hough_p1, hough_p2, hough_dp, ring_est_dist)
+        middle_ring = find_best_ring(no_axe_img, 
+            R_bounds2, G_bounds2, B_bounds2,
+            hough_p1, hough_p2, hough_dp, 2*ring_est_dist)
+        outer_ring = find_best_ring(no_axe_img, 
+            R_bounds3, G_bounds3, B_bounds3,
+            hough_p1, hough_p2, hough_dp, 3*ring_est_dist)
+    
+        # find rings and approximate true score
+        rings = fill_missing_rings(inner_ring, middle_ring, outer_ring, 
+            out_to_mid=ring_est_dist, mid_to_in=ring_est_dist)
 
         # for ri, (cx,cy,r) in enumerate(rings):
         #     rings[ri] = transform_ring(rings[ri])
@@ -237,6 +238,7 @@ if __name__ == '__main__':
                     color=(0, 0, 255), thickness=-1)
 
             if true_score != approx_score and not no_detect:
+                print("Neg Img: %s" % pos_to_neg[img_file])
                 print("True, Approx: (%d, %d)" % (true_score, approx_score))
                 plt.imshow(orig_img_RGV)
                 plt.show()
@@ -260,11 +262,10 @@ if __name__ == '__main__':
 
     # metrics for evaluating results wrt distribution of scores
     accuracy = np.sum(np.diag(confusion_matrix)) / len(pos_imgs)
-    recall = np.diag(
-        confusion_matrix / 
+    recall = np.diag(confusion_matrix / 
         np.reshape(np.sum(confusion_matrix,1), (4,1)))
-    precision = np.diag(
-        confusion_matrix / np.sum(confusion_matrix))
+    precision = np.diag(confusion_matrix / 
+        np.reshape(np.sum(confusion_matrix,0), (4,1)))
     print("Accuracy:")
     print(accuracy)
     print("Recall:")
@@ -279,4 +280,6 @@ if __name__ == '__main__':
 
     plot_confusion_matrix(norm_confusion_matrix, labels,
         title="Normalized(by rows) Confusion Matrix: True v.s Approx Axe Scores")
+    plot_confusion_matrix(confusion_matrix, labels,
+        title="Confusion Matrix of Counts: True v.s Approx Axe Scores")
     # plot_confusion_matrix(norm_confusion_matrix, labels)

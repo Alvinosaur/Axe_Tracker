@@ -8,9 +8,9 @@ import time
 import yaml
 from matplotlib import pyplot as plt
 
-from ransac_circle import run_ransac
+from helpers.ransac_circle import run_ransac
 
-DEBUG = True
+DEBUG = False
 MASK_VAL = 255
 YAML_FILEPATH = "params/default_params.yaml"
 
@@ -49,8 +49,7 @@ def find_best_ring(img, R_bounds, G_bounds, B_bounds, hough_param1,
     # circles = cv2.HoughCircles(combined_mask, cv2.HOUGH_GRADIENT, dp=hough_dp, 
     #     minDist=1, param1=hough_param1, param2=hough_param2)
     pts = np.transpose(np.nonzero(combined_mask))
-    (ransac_center, ransac_rad), _ = run_ransac(pts, combined_mask, img, 
-        max_iters=2000, 
+    (ransac_center, ransac_rad), _ = run_ransac(pts, max_iters=2000, 
         inlier_thresh=0.05*ring_est_dist)
     circles = [(int(ransac_center[1]), int(ransac_center[0]), int(ransac_rad))]
         
@@ -127,54 +126,54 @@ def main():
     # Find rings
     inner_ring = find_best_ring(img1, R_bounds1, G_bounds1, B_bounds1, 
         hough_p1, hough_p2, hough_dp, 8)
-#     middle_ring = find_best_ring(img1, R_bounds2, G_bounds2, B_bounds2,
-#         hough_p1, hough_p2, hough_dp, 2*ring_est_dist)
-#     outer_ring = find_best_ring(img1, R_bounds3, G_bounds3, B_bounds3,
-#         hough_p1, hough_p2, hough_dp, 3*ring_est_dist)
+    middle_ring = find_best_ring(img1, R_bounds2, G_bounds2, B_bounds2,
+        hough_p1, hough_p2, hough_dp, 2*ring_est_dist)
+    outer_ring = find_best_ring(img1, R_bounds3, G_bounds3, B_bounds3,
+        hough_p1, hough_p2, hough_dp, 3*ring_est_dist)
 
-#     if (inner_ring is None) and (middle_ring is None) and (outer_ring is None):
-#         raise(NoRingError("None of the 3 rings were found. Need to re-tune params!"))
+    if (inner_ring is None) and (middle_ring is None) and (outer_ring is None):
+        raise(NoRingError("None of the 3 rings were found. Need to re-tune params!"))
 
-#     else:
-#         rings = fill_missing_rings(inner_ring, middle_ring, outer_ring, 
-#             out_to_mid=ring_est_dist, mid_to_in=ring_est_dist)
-#         draw_circles(img1, rings, thickness=1)
-#         plt.imshow(img1)
-#         plt.show()
-#         return rings
+    else:
+        rings = fill_missing_rings(inner_ring, middle_ring, outer_ring, 
+            out_to_mid=ring_est_dist, mid_to_in=ring_est_dist)
+        draw_circles(img1, rings, thickness=1)
+        plt.imshow(img1)
+        plt.show()
+        return rings
 
-# def fill_missing_rings(ring1, ring2, ring3, out_to_mid=65, mid_to_in=65):
-#     # returns original rings if all rings are present
-#     # else approximates missing rings as long as one ring present
-#     out_to_in = out_to_mid + mid_to_in
-#     if ring1 is None:
-#         if ring2 is None:
-#             ring1 = (ring3[0], ring3[1], ring3[2]-out_to_in)
-#             ring2 = (ring3[0], ring3[1], ring3[2]-out_to_mid)
-#         else:
-#             ring1 = (ring2[0], ring2[1], ring2[2]-mid_to_in)
-#             if ring3 is None:
-#                 ring3 = (ring2[0], ring2[1], ring2[2]+out_to_mid)
-#     elif ring2 is None:
-#         if ring3 is None:
-#             ring2 = (ring1[0], ring1[1], ring1[2]+mid_to_in)
-#             ring3 = (ring1[0], ring1[1], ring1[2]+out_to_in)
-#         else:
-#             # r1 = (r2/r3)*r2, assuming each level has same scale down
-#             ring2 = (ring3[0], ring3[1], ring3[2]-out_to_mid)
-#             if ring1 is None:
-#                 ring1 = (ring3[0], ring3[1], ring3[2]-out_to_in)
-#     elif ring3 is None:
-#         if ring1 is None:
-#             ring1 = (ring2[0], ring2[1], ring2[2]-mid_to_in)
-#             ring3 = (ring2[0], ring2[1], ring2[2]+out_to_mid)
-#         else:
-#             # r1 = (r2/r3)*r2, assuming each level has same scale down
-#             ring3 = (ring1[0], ring1[1], ring1[2]+out_to_in)
-#             if ring2 is None:
-#                 ring2 = (ring1[0], ring1[1], ring1[2]+mid_to_in)
+def fill_missing_rings(ring1, ring2, ring3, out_to_mid=65, mid_to_in=65):
+    # returns original rings if all rings are present
+    # else approximates missing rings as long as one ring present
+    out_to_in = out_to_mid + mid_to_in
+    if ring1 is None:
+        if ring2 is None:
+            ring1 = (ring3[0], ring3[1], ring3[2]-out_to_in)
+            ring2 = (ring3[0], ring3[1], ring3[2]-out_to_mid)
+        else:
+            ring1 = (ring2[0], ring2[1], ring2[2]-mid_to_in)
+            if ring3 is None:
+                ring3 = (ring2[0], ring2[1], ring2[2]+out_to_mid)
+    elif ring2 is None:
+        if ring3 is None:
+            ring2 = (ring1[0], ring1[1], ring1[2]+mid_to_in)
+            ring3 = (ring1[0], ring1[1], ring1[2]+out_to_in)
+        else:
+            # r1 = (r2/r3)*r2, assuming each level has same scale down
+            ring2 = (ring3[0], ring3[1], ring3[2]-out_to_mid)
+            if ring1 is None:
+                ring1 = (ring3[0], ring3[1], ring3[2]-out_to_in)
+    elif ring3 is None:
+        if ring1 is None:
+            ring1 = (ring2[0], ring2[1], ring2[2]-mid_to_in)
+            ring3 = (ring2[0], ring2[1], ring2[2]+out_to_mid)
+        else:
+            # r1 = (r2/r3)*r2, assuming each level has same scale down
+            ring3 = (ring1[0], ring1[1], ring1[2]+out_to_in)
+            if ring2 is None:
+                ring2 = (ring1[0], ring1[1], ring1[2]+mid_to_in)
 
-#     return [ring1, ring2, ring3]
+    return [ring1, ring2, ring3]
 
 
 if __name__ == '__main__':

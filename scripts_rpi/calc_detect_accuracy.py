@@ -19,6 +19,9 @@ YAML_FILEPATH = "params/default_params.yaml"
 positives_dir = "../../../axe_images/positives"
 test_dir = "../../../axe_images/test"
 diff_img_dir = "../../../axe_images/differences"
+# note: not ring_calib, which contains shrunken images
+ring_calib_dir = "/Users/Alvin/Documents/axe_images/negative_compare"  
+pos_to_neg_file = "pos_to_neg_mapping.npz"
 
 
 def get_labeled_score(img_file):
@@ -107,6 +110,17 @@ if __name__ == '__main__':
     G_bounds3 = (params["G_min3"], params["G_max3"])
     B_bounds3 = (params["B_min3"], params["B_max3"])
 
+    # Ring distances
+    is_mini_img = False  # classical version runs on normal sized images
+    if is_mini_img:
+        ring_est_dist = params["ring_est_dist_mini"]
+    else:
+        ring_est_dist = params["ring_est_dist"]
+
+    # Load positive-to-negative mapping
+    data = np.load(pos_to_neg_file, allow_pickle=True)
+    pos_to_neg = data["pos_to_neg"].item()
+
     # confusion matrix to understand results
     labels = [0, 1, 3, 5]
     score_to_idx = {
@@ -138,15 +152,18 @@ if __name__ == '__main__':
         orig_img = cv2.cvtColor(cv2.imread(orig_img_path), cv2.COLOR_BGR2RGB)
 
         # Find rings
-        inner_ring = find_best_ring(orig_img, 
+        no_axe_img_path = os.path.join(ring_calib_dir, pos_to_neg[img_file])
+        no_axe_img = cv2.cvtColor(cv2.imread(no_axe_img_path), 
+            cv2.COLOR_BGR2RGB)
+        inner_ring = find_best_ring(no_axe_img, 
             R_bounds1, G_bounds1, B_bounds1, 
-            hough_p1, hough_p2, hough_dp)
-        middle_ring = find_best_ring(orig_img, 
+            hough_p1, hough_p2, hough_dp, ring_est_dist)
+        middle_ring = find_best_ring(no_axe_img, 
             R_bounds2, G_bounds2, B_bounds2,
-            hough_p1, hough_p2, hough_dp)
-        outer_ring = find_best_ring(orig_img, 
+            hough_p1, hough_p2, hough_dp, 2*ring_est_dist)
+        outer_ring = find_best_ring(no_axe_img, 
             R_bounds3, G_bounds3, B_bounds3,
-            hough_p1, hough_p2, hough_dp)
+            hough_p1, hough_p2, hough_dp, 3*ring_est_dist)
 
         if ((inner_ring is None) and (middle_ring is None) and 
             (outer_ring is None)):
@@ -187,9 +204,12 @@ if __name__ == '__main__':
         confusion_matrix / 
         np.reshape(np.sum(confusion_matrix,1), (4,1)))
     precision = np.diag(
-        confusion_matrix / np.sum(confusion_matrix))
+        confusion_matrix / 
+        np.reshape(np.sum(confusion_matrix,0), (4,1)))
     print(accuracy)
+    print("Recall:")
     print(recall)
+    print("Precision:")
     print(precision)
 
     print("normalized confusion matrix:")
@@ -199,4 +219,6 @@ if __name__ == '__main__':
 
     plot_confusion_matrix(norm_confusion_matrix, labels,
         title="Normalized(by rows) Confusion Matrix: True v.s Approx Axe Scores")
+    plot_confusion_matrix(confusion_matrix, labels,
+        title="Confusion Matrix of Counts: True v.s Approx Axe Scores")
     # plot_confusion_matrix(norm_confusion_matrix, labels)

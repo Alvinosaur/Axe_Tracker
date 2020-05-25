@@ -71,6 +71,19 @@ def resize_img(file, top, bot, left, right):
     # if image still contains axe, then keep as new positive, else don't add
     return img
 
+def manually_resize(img_file, save=True):
+    cy, cx = target_center
+    dy, dx = target_h//2, target_w//2
+    top, bot, left, right = cy-dy, cy+dy, cx-dx, cx+dx
+    label_shift_h, label_shift_w = top - 0, left - 0
+    img = cv2.imread(filename=img_file)
+    img = img[top:bot, left:right]
+
+    # scale down to 128 x 128
+    img = cv2.resize(img, dsize=(FINAL_SIZE, FINAL_SIZE))
+    if save: cv2.imwrite("mini_" + img_file, img)
+    return img
+
 
 def offset_label(file, shift_h, shift_w):
     # Open original file
@@ -107,5 +120,8 @@ def offset_label(file, shift_h, shift_w):
 
     return et, in_bounds
 
+
+
 if __name__ == "__main__":
-    main()
+    # main()
+    manually_resize("ring_calib.png")

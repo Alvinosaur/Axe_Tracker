@@ -2,7 +2,6 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import heapq
-import cv2
 
 """
 Great Tutorial: https://www.uio.no/studier/emner/matnat/its/nedlagte-emner/UNIK4690/v16/forelesninger/lecture_3_3-robust-estimation-with-ransac.pdf
@@ -14,23 +13,12 @@ Source of calc_circle_params: https://github.com/Yiphy/Ransac-2d-Shape-Detection
 - Circle only needs n = 3 points(x,y), determined by calc_circle_params(pts)
 """
 
-class Entry():
-    def __init__(self, count, inliers, center, r):
-        self.count = count
-        self.inliers = inliers
-        self.center = center
-        self.r = r
-
-    def __lt__(self, other):
-        return self.count < other.count
-
-def run_ransac(points, mask, img, max_iters=50, inlier_thresh=5):
+def run_ransac(points, max_iters=50, inlier_thresh=5):
     N = 3  # need three points to form circle
     M = points.shape[0]  # number of points
     best_inliers = None
     best_backup = None
     most_inliers = 0
-    best_K_inliers = []
     
     for i in range(max_iters):
         sample = np.random.randint(low=0, high=M, size=N)
@@ -39,38 +27,10 @@ def run_ransac(points, mask, img, max_iters=50, inlier_thresh=5):
         except ZeroDivisionError:
             continue
         inliers = find_inliers(points, center, r, inlier_thresh)
-        S = inliers.shape[0]
-        if len(best_K_inliers) < 10:
-            heapq.heappush(best_K_inliers, 
-                Entry(S, inliers, center, r))
-        elif best_K_inliers[0].count < S:
-            heapq.heappop(best_K_inliers)
-            heapq.heappush(best_K_inliers, 
-                Entry(S, inliers, center, r))
-
-        if S > most_inliers:
-            most_inliers = S
+        if inliers.shape[0] > most_inliers:
+            most_inliers = inliers.shape[0]
             best_inliers = inliers
             best_backup = (center, r)
-
-    while len(best_K_inliers) > 0:
-        img_copy = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
-        entry = heapq.heappop(best_K_inliers)
-        print("Count: %d" % entry.count)
-        cy, cx = entry.center.astype(int)
-        print("~Center: (%.2f, %.2f), ~R: %.2f" % (
-            cy, cx, entry.r))
-        img_copy[entry.inliers[:,0], entry.inliers[:,1]] = [255, 0, 0]
-        plt.imshow(img_copy)
-        plt.show()
-        output = img.copy()
-        cv2.circle(output, (cx, cy), int(entry.r), (0, 255, 0), 1)
-        cv2.rectangle(output, (cx - 2, cy - 2), (cx + 2, cy + 2), (0, 128, 255), -1)
-        plt.imshow(output)
-        plt.show()
-        # viz_pts_circles(entry.inliers, 
-        #     None, 
-        #     (entry.center, entry.r))
 
     confidence = most_inliers / M
     try:
@@ -127,7 +87,13 @@ def gen_true_inliers(center, r, N=30):
     pts = center + np.hstack([np.cos(rand_thetas), np.sin(rand_thetas)]) * r
     return pts
 
+
 def viz_pts_circles(pts, true_circle, approx_circle):
+    if true_circle is not None:
+        true_center, true_r = true_circle
+        true_circle = plt.Circle(true_center, true_r, 
+            color='r', fill=False, linewidth=2)
+        
     approx_center, approx_r = approx_circle
     fig, ax = plt.subplots()
     min_x, min_y = np.min(pts, axis=0)
@@ -137,14 +103,10 @@ def viz_pts_circles(pts, true_circle, approx_circle):
     ax.scatter(pts[:,0], pts[:,1])
     approx_circle = plt.Circle(approx_center, approx_r, 
         color='b', fill=False, linewidth=2)
+    ax.add_artist(true_circle)
     ax.add_artist(approx_circle)
-
-    if true_circle is not None:
-        true_center, true_r = true_circle
-        true_circle = plt.Circle(true_center, true_r, 
-            color='r', fill=False, linewidth=2)
-        ax.add_artist(true_circle)
     plt.show()
+
 
 def test_ransac(visualize=True):
     # generate points along circle with some random points

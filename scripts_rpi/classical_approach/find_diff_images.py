@@ -5,7 +5,7 @@ import argparse
 import yaml
 import datetime
 
-from process_image import count_diff_SSIM
+from classical_approach.process_image import count_diff_SSIM
 import re
 
 
@@ -87,4 +87,5 @@ def main():
     print("Files that were rejected:")
     print(wrong_diff)
 
-main()
+if __name__ == "__main__":
+    main()
