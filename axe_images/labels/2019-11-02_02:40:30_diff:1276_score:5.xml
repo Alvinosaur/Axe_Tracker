@@ -1,0 +1,18 @@
+<annotation>
+    <folder>positives</folder>
+    <filename>2019-11-02_02:40:30_diff:1276_score:5.png</filename>
+    <size>
+        <width>128</width>
+        <height>128</height>
+        <depth>3</depth>
+    </size>
+    <object>
+        <name>Axe Tip</name>
+        <bndbox>
+            <xmin>56</xmin>
+            <ymin>74</ymin>
+            <xmax>67</xmax>
+            <ymax>77</ymax>
+        </bndbox>
+    </object>
+</annotation>
