@@ -8,17 +8,18 @@ Axe-throwing involves throwing an axe at a bulls-eye targt and scoring the throw
 
 To detect axes, we compare two image frames, one with and one without an axe, using the SSIM algorithm. Details for detection can be found in the classical approach google slides. Axe detection is also used for automatic data collection on the site: a continuously running script takes images at a given frequency and saves images when an axe is detected.
 
-To segment the axe tip, we use MaskRCNN, which performs pixel-level segmentation. In this case, we only have two classes: background or axe tip. The most important hyperparameters include TRAIN_ROIS_PER_IMAGE (set to small value of 32) and MAX_GT_INSTANCES (set to 1) since there is only ever one axe present in an image. Although positives and negatives are collected automatically using axe detection, we need to manually label the images. I used [RectLabel's free trial](https://apps.apple.com/us/app/rectlabel-for-object-detection/id1210181730?mt=12) to label pixels (simple bounding boxes). I also used the *label_images.py* script described below to quickly hand-label the score of each axe throw. 
+To segment the axe tip, we use MaskRCNN, which performs pixel-level segmentation. In this case, we only have two classes: background or axe tip. The most important hyperparameters include TRAIN_ROIS_PER_IMAGE (set to small value of 32) and MAX_GT_INSTANCES (set to 1) since there is only ever one axe present in an image. 
+
+Although positives and negatives are collected automatically using axe detection, we need to manually label the images. I used [RectLabel's free trial](https://apps.apple.com/us/app/rectlabel-for-object-detection/id1210181730?mt=12) to label pixels (simple bounding boxes). I also used the *label_images.py* script described below to quickly hand-label the score of each axe throw. 
 
 ## Performance
-Hardware used is a Raspberry Pi 4 Model B.
-
-Runtime for axe detection is 1.204s
-Ruuntime for axe scoring is 11.04s. 
-End-to-end performs much more poorly because of lack enough training data.
-Training size: 269 images
-Val size: 59
-Test size: 58
+- Hardware used is a Raspberry Pi 4 Model B.
+- Runtime for axe detection is 1.204s
+- Runtime for axe scoring is 11.04s. 
+- End-to-end performs much more poorly because of lack enough training data.
+- Training size: 269 images
+- Val size: 59
+- Test size: 58
 
 ### Final Performance
 ![final_performance_comparison.jpg](https://github.com/Alvinosaur/Axe_Tracker/blob/master/final_performance_comparison.jpg?raw=true)
