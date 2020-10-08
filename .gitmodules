@@ -4,3 +4,6 @@
 [submodule "scripts_rpi/Mask_RCNN"]
 	path = scripts_rpi/Mask_RCNN
 	url = git@github.com:matterport/Mask_RCNN.git
+[submodule "scripts_rpi/maskrcnn_approach/Mask_RCNN"]
+	path = scripts_rpi/maskrcnn_approach/Mask_RCNN
+	url = git@github.com:matterport/Mask_RCNN.git

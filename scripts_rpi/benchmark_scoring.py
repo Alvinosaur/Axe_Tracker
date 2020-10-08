@@ -6,6 +6,7 @@ import time
 import matplotlib.pyplot as plt
 
 from maskrcnn_approach.AxeDetectModel import AxeDetectModel, test as test_mcrnn
+from maskrcnn_approach.AxeDataset import AxeDataset
 from helpers.ring_detect import (
     fill_missing_rings, find_best_ring, draw_circles, NoRingError)
 from helpers.resize_relabel_images import get_warp, transform_ring
@@ -160,16 +161,17 @@ if __name__ == '__main__':
                                     hough_p1, hough_p2, hough_dp, ring_est_dist)
         middle_ring = find_best_ring(orig_img_RGB,
                                      R_bounds2, G_bounds2, B_bounds2,
-                                     hough_p1, hough_p2, hough_dp, 2*ring_est_dist)
+                                     hough_p1, hough_p2, hough_dp, 2 * ring_est_dist)
         outer_ring = find_best_ring(orig_img_RGB,
                                     R_bounds3, G_bounds3, B_bounds3,
-                                    hough_p1, hough_p2, hough_dp, 3*ring_est_dist)
+                                    hough_p1, hough_p2, hough_dp, 3 * ring_est_dist)
 
         # find rings and approximate true score
         rings = fill_missing_rings(inner_ring, middle_ring, outer_ring,
                                    out_to_mid=ring_est_dist, mid_to_in=ring_est_dist)
 
         detection = mrcnn_model.generate_prediction(orig_img)
+        true_score = AxeDataset.score_from_labelpath(img_file)
 
         end = time.time()
         total_time += (end - start)
@@ -184,5 +186,7 @@ if __name__ == '__main__':
             approx_score = 0
             no_detect = True
             corners = []
+
+        print("True: %s, Approx: %d" % (true_score, approx_score))
 
     print("Average runtime: %.2f" % (total_time / float(len(pos_imgs))))
